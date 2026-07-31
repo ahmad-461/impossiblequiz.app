@@ -11,8 +11,12 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/$1.py"
+      "src": "/api/difficulty-engine",
+      "dest": "api/difficulty-engine.py"
+    },
+    {
+      "src": "/api/hello",
+      "dest": "api/hello.py"
     },
     {
       "src": "/(.*)",

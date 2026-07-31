@@ -5,8 +5,24 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "The Impossible Quiz",
-  description: "Can you beat the impossible quiz?",
+  title: "The Impossible Quiz Generator — AI-Powered Trivia Mainframe",
+  description: "Test your limits against the ultimate AI-generated impossible quiz. Dynamic difficulty progression, boss rounds, and custom topics powered by Gemini and our python engine.",
+  keywords: ["impossible quiz", "ai trivia", "gemini quiz", "quiz generator", "esports trivia", "programming quiz"],
+  authors: [{ name: "Esports Quiz Team" }],
+  icons: {
+    icon: "/favicon.ico",
+  },
+  openGraph: {
+    title: "The Impossible Quiz Generator",
+    description: "Can you beat the AI-powered impossible quiz mainframe? Test your skills with real-time question generation and dynamic difficulty scaling.",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The Impossible Quiz Generator",
+    description: "AI-generated quiz with dynamic difficulty scaling, boss rounds, and high-stakes survival.",
+  },
 };
 
 export default function RootLayout({
@@ -25,7 +41,7 @@ export default function RootLayout({
             </span>
           </div>
           <div className="text-xs uppercase tracking-widest text-neonCyan border border-neonCyan/40 px-2.5 py-1 rounded-md font-mono bg-neonCyan/5 animate-pulse">
-            PHASE 1 // BETA
+            PHASE 4 // STAGING
           </div>
         </header>
 

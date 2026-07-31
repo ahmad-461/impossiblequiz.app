@@ -9,7 +9,7 @@ function QuizContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Selected Category ID (e.g. programming, logic-algorithms, data-analytics, computer-science-fundamentals)
+  // Selected Category ID
   const categoryId = searchParams.get("category") || "programming";
 
   // States
@@ -44,6 +44,50 @@ function QuizContent() {
 
   // References for keeping state updated in callbacks
   const handleTimeoutRef = useRef<(() => void) | null>(null);
+
+  // Helper to save session state to sessionStorage
+  const saveSessionState = (
+    currentLives: number,
+    currentScore: number,
+    currentStreak: number,
+    currentPeakStreak: number,
+    answered: number,
+    correct: number,
+    diff: "easy" | "medium" | "hard",
+    hist: { correct: boolean; difficulty: "easy" | "medium" | "hard" }[],
+    askedTexts: string[],
+    askedIds: string[],
+    currQuestion: Question | null
+  ) => {
+    try {
+      const stateObj = {
+        categoryId,
+        lives: currentLives,
+        score: currentScore,
+        streak: currentStreak,
+        peakStreak: currentPeakStreak,
+        totalQuestionsAnswered: answered,
+        totalCorrectAnswers: correct,
+        currentDifficulty: diff,
+        history: hist,
+        alreadyAskedTexts: askedTexts,
+        alreadyAskedIds: askedIds,
+        currentQuestion: currQuestion,
+      };
+      sessionStorage.setItem("active_quiz_session", JSON.stringify(stateObj));
+    } catch (e) {
+      console.error("Failed to save quiz session:", e);
+    }
+  };
+
+  // Helper to clear session state from sessionStorage
+  const clearSessionState = () => {
+    try {
+      sessionStorage.removeItem("active_quiz_session");
+    } catch (e) {
+      console.error("Failed to clear quiz session:", e);
+    }
+  };
 
   // Helper to check if the simulated/actual history should trigger a Boss Round
   const checkIsBossRound = (hist: { correct: boolean; difficulty: "easy" | "medium" | "hard" }[]): boolean => {
@@ -92,6 +136,7 @@ function QuizContent() {
     correct: number,
     total: number
   ) => {
+    clearSessionState();
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
     const resultState = {
       score: finalScore,
@@ -132,8 +177,6 @@ function QuizContent() {
       console.error("Error predicting difficulty in pre-fetch, using client-side fallback:", err);
 
       // Client-side fallback prediction logic
-      // Streak of 3 correct answers within the same tier promotes
-      // Since we simulate getting currQuestion correct, let's see how many consecutive we have
       let suffixCount = 0;
       for (let i = simHistory.length - 1; i >= 0; i--) {
         if (simHistory[i].correct && simHistory[i].difficulty === currQuestion.difficulty) {
@@ -167,6 +210,48 @@ function QuizContent() {
   useEffect(() => {
     const initializeQuiz = async () => {
       setIsLoading(true);
+
+      // Try to restore session state from sessionStorage
+      let restored = null;
+      try {
+        const stored = sessionStorage.getItem("active_quiz_session");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.categoryId === categoryId) {
+            restored = parsed;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to restore quiz session:", e);
+      }
+
+      if (restored) {
+        setLives(restored.lives);
+        setScore(restored.score);
+        setStreak(restored.streak);
+        setPeakStreak(restored.peakStreak);
+        setTotalQuestionsAnswered(restored.totalQuestionsAnswered);
+        setTotalCorrectAnswers(restored.totalCorrectAnswers);
+        setCurrentDifficulty(restored.currentDifficulty);
+        setHistory(restored.history);
+        setAlreadyAskedTexts(restored.alreadyAskedTexts);
+        setAlreadyAskedIds(restored.alreadyAskedIds);
+        setCurrentQuestion(restored.currentQuestion);
+
+        // Pre-clear old next-question prefetch slots
+        setNextQuestion(null);
+        setNextQuestionDifficulty(null);
+        setNextQuestionIsBoss(false);
+
+        // Warm up prefetch for restored state
+        if (restored.currentQuestion) {
+          triggerPrefetch(restored.currentQuestion, restored.history, restored.alreadyAskedTexts, restored.alreadyAskedIds);
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // Standard clean initialization
       setLives(3);
       setScore(0);
       setStreak(0);
@@ -195,10 +280,12 @@ function QuizContent() {
         setAlreadyAskedTexts(askedTexts);
         setAlreadyAskedIds(askedIds);
 
+        // Save session immediately
+        saveSessionState(3, 0, 0, 0, 0, 0, "easy", [], askedTexts, askedIds, firstQuestion);
+
         // Prefetch the next question
         triggerPrefetch(firstQuestion, [], askedTexts, askedIds);
       } else {
-        // If we can't even get the first question, finish
         finishQuiz(0, 0, "defeat", 0, 0);
       }
       setIsLoading(false);
@@ -303,7 +390,6 @@ function QuizContent() {
       console.error("Error calling difficulty engine, falling back to client-side logic:", e);
       // Fallback logic
       if (correct) {
-        // Count consecutive correct answers of the same tier at the end of updatedHistory
         let suffixCount = 0;
         for (let i = updatedHistory.length - 1; i >= 0; i--) {
           if (updatedHistory[i].correct && updatedHistory[i].difficulty === currentDifficulty) {
@@ -361,7 +447,6 @@ function QuizContent() {
         setAlreadyAskedTexts(currentAskedTexts);
         setAlreadyAskedIds(currentAskedIds);
       } else {
-        // Pre-fetch invalid or mismatched (e.g. they answered wrong so difficulty demoted), fetch on-demand
         setIsLoading(true);
         nextActiveQuestion = await fetchQuestionFromAPI(
           nextDiff,
@@ -380,10 +465,24 @@ function QuizContent() {
       }
 
       if (!nextActiveQuestion) {
-        // If we can't obtain a new question, finish the quiz gracefully
         finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "pool_victory", nextCorrect, totalQuestionsAnswered + 1);
         return;
       }
+
+      // Save persistent state immediately for the next question
+      saveSessionState(
+        nextLives,
+        nextScore,
+        nextStreak,
+        Math.max(peakStreak, nextStreak),
+        totalQuestionsAnswered + 1,
+        nextCorrect,
+        nextDiff,
+        updatedHistory,
+        currentAskedTexts,
+        currentAskedIds,
+        nextActiveQuestion
+      );
 
       // Reset state for the next question
       setSelectionState("idle");
@@ -422,7 +521,7 @@ function QuizContent() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-12 h-12 rounded-full border-4 border-neonCyan border-t-transparent animate-spin mb-4"></div>
-        <span className="text-sm font-mono tracking-widest text-textMuted uppercase">LOADING QUIZ VECTOR...</span>
+        <span className="text-sm font-display tracking-widest text-textMuted uppercase">LOADING QUIZ VECTOR...</span>
       </div>
     );
   }
@@ -435,25 +534,27 @@ function QuizContent() {
   if (categoryId === "computer-science-fundamentals") categoryLabel = "SYS.FUND";
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none">
-      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-neonViolet/20 pb-4">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 md:py-12 max-w-4xl mx-auto w-full select-none animate-page-fade">
+      {/* Metrics Bar */}
+      <div className="w-full flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-6 border-b border-neonViolet/20 pb-4">
         {/* Active category details */}
-        <div className="flex flex-col">
-          <span className="text-xs font-mono tracking-widest text-textMuted uppercase">CURRENT SIMULATION</span>
-          <span className="text-sm font-bold text-neonCyan font-mono uppercase">
+        <div className="flex flex-col text-center md:text-left">
+          <span className="text-[10px] font-display tracking-widest text-textMuted uppercase">CURRENT SIMULATION</span>
+          <span className="text-sm font-black text-neonCyan font-display uppercase tracking-wider">
             {categoryId.replace("-", " ")} {" // "} {categoryLabel}
           </span>
         </div>
 
         {/* Lives, Streak, and Score indicators */}
-        <div className="flex flex-wrap items-center gap-6 w-full sm:w-auto">
-          <div className="flex flex-col items-start sm:items-end">
-            <span className="text-xs font-mono tracking-widest text-textMuted uppercase mb-1">SHIELD</span>
-            <div className="flex gap-1.5">
+        <div className="flex flex-wrap items-center justify-between md:justify-end gap-4 md:gap-8 w-full md:w-auto">
+          {/* Shields */}
+          <div className="flex flex-col items-start md:items-end">
+            <span className="text-[10px] font-display tracking-widest text-textMuted uppercase mb-1">SHIELD</span>
+            <div className="flex gap-1">
               {[1, 2, 3].map((heart) => (
                 <span
                   key={heart}
-                  className={`text-xl transition-all duration-300 ${
+                  className={`text-lg transition-all duration-300 ${
                     heart <= lives ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]" : "opacity-20 scale-90"
                   }`}
                 >
@@ -463,29 +564,35 @@ function QuizContent() {
             </div>
           </div>
 
-          <div className="flex flex-col items-start sm:items-end">
-            <span className="text-xs font-mono tracking-widest text-textMuted uppercase mb-1">STREAK</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-black text-neonViolet font-mono">
+          {/* Streak */}
+          <div className="flex flex-col items-start md:items-end">
+            <span className="text-[10px] font-display tracking-widest text-textMuted uppercase mb-1">STREAK</span>
+            <div className="flex items-center gap-1">
+              <span
+                key={streak}
+                className={`text-sm font-black text-neonViolet font-display ${streak > 0 ? "animate-streak-pulse" : ""}`}
+              >
                 {streak}
               </span>
-              <span className={`text-lg transition-transform duration-300 ${streak > 0 ? "animate-bounce scale-110" : "opacity-30"}`}>
+              <span className={`text-base transition-transform duration-300 ${streak > 0 ? "scale-110" : "opacity-35"}`}>
                 🔥
               </span>
             </div>
           </div>
 
-          <div className="text-left sm:text-right">
-            <span className="text-xs font-mono tracking-widest text-textMuted block uppercase mb-1">SCORE</span>
-            <span className="text-sm font-bold text-neonCyan font-mono">
+          {/* Score */}
+          <div className="text-left md:text-right">
+            <span className="text-[10px] font-display tracking-widest text-textMuted block uppercase mb-1">SCORE</span>
+            <span className="text-sm font-black text-neonCyan font-display">
               {score.toLocaleString()}
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-left sm:text-right">
-              <span className="text-xs font-mono tracking-widest text-textMuted block uppercase mb-1">TIMER</span>
-              <span className={`text-sm font-bold font-mono transition-colors duration-200 ${timer <= 5 ? "text-neonViolet animate-pulse" : "text-neonCyan"}`}>
+          {/* Timer */}
+          <div className="flex items-center gap-2">
+            <div className="text-left md:text-right">
+              <span className="text-[10px] font-display tracking-widest text-textMuted block uppercase mb-1">TIMER</span>
+              <span className={`text-sm font-black font-display transition-colors duration-200 ${timer <= 5 ? "text-neonViolet animate-pulse" : "text-neonCyan"}`}>
                 {timer < 10 ? `00:0${timer}` : `00:${timer}`}
               </span>
             </div>
@@ -495,7 +602,7 @@ function QuizContent() {
       </div>
 
       {/* Timer Bar */}
-      <div className="w-full h-1.5 bg-bgDark border border-neonViolet/20 rounded-full mb-8 overflow-hidden">
+      <div className="w-full h-1 bg-bgDark border border-neonViolet/20 rounded-full mb-6 overflow-hidden">
         <div
           className={`h-full transition-all duration-1000 ${timer <= 5 ? "bg-neonViolet" : "bg-gradient-to-r from-neonCyan to-neonViolet"}`}
           style={{ width: `${(timer / 30) * 100}%` }}
@@ -503,7 +610,7 @@ function QuizContent() {
       </div>
 
       {/* Main Question Display */}
-      <div className={`w-full p-8 rounded-lg transition-all duration-300 relative ${
+      <div className={`w-full p-6 md:p-8 rounded-lg transition-all duration-300 relative ${
         currentQuestion.isBossRound
           ? "bg-gradient-to-b from-[#150a25] to-bgDark border-2 border-neonViolet shadow-[0_0_25px_rgba(168,85,247,0.3)] animate-pulse"
           : "bg-bgDark border-2 border-neonViolet/30 shadow-[0_0_15px_rgba(168,85,247,0.1)]"
@@ -514,13 +621,13 @@ function QuizContent() {
 
         {/* Boss Round Alert Banner */}
         {currentQuestion.isBossRound && (
-          <div className="mb-6 bg-neonViolet/20 border border-neonViolet px-4 py-3 rounded text-neonViolet font-mono font-black text-center tracking-widest text-xs md:text-sm shadow-[0_0_15px_rgba(168,85,247,0.2)] animate-pulse">
+          <div className="mb-6 bg-neonViolet/20 border border-neonViolet px-4 py-3 rounded text-neonViolet font-display font-black text-center tracking-widest text-xs md:text-sm shadow-[0_0_15px_rgba(168,85,247,0.2)] animate-pulse">
             ⚠️ WARNING // ULTRA-SECURITY PROTOCOL // BOSS ROUND ACTIVE ⚠️
           </div>
         )}
 
         <div className="flex flex-wrap justify-between items-center gap-4">
-          <span className={`text-xs font-mono tracking-widest px-2.5 py-1 rounded uppercase border ${
+          <span className={`text-[10px] font-display tracking-widest px-2.5 py-1 rounded uppercase border ${
             currentQuestion.isBossRound
               ? "text-neonViolet bg-neonViolet/10 border-neonViolet/30"
               : "text-neonCyan bg-neonCyan/10 border-neonCyan/25"
@@ -529,17 +636,17 @@ function QuizContent() {
           </span>
 
           {currentQuestion.isBossRound && (
-            <span className="text-xs font-mono tracking-widest text-neonViolet bg-neonViolet/10 border border-neonViolet/20 px-2.5 py-1 rounded animate-pulse font-bold">
+            <span className="text-[10px] font-display tracking-widest text-neonViolet bg-neonViolet/10 border border-neonViolet/20 px-2.5 py-1 rounded animate-pulse font-bold">
               ⚠️ BOSS ROUND ⚠️
             </span>
           )}
 
-          <span className="text-xs font-mono tracking-widest text-textMuted font-semibold">
+          <span className="text-[10px] font-display tracking-widest text-textMuted font-bold uppercase">
             {totalQuestionsAnswered + 1} OF 10 ESTIMATED
           </span>
         </div>
 
-        <h2 className="text-xl md:text-2xl font-bold tracking-tight mt-6 mb-8 text-textPrimary leading-snug">
+        <h2 className="text-lg md:text-2xl font-bold tracking-tight mt-6 mb-8 text-textPrimary leading-snug">
           {currentQuestion.questionText}
         </h2>
 
@@ -562,17 +669,14 @@ function QuizContent() {
               const isSelectedAnswer = idx === selectedIdx;
 
               if (isCorrectAnswer) {
-                // Correct choice is highlighted in neonCyan (emerald alternative)
                 borderClass = "border-neonCyan bg-neonCyan/10 shadow-[0_0_10px_rgba(34,211,238,0.4)]";
                 letterBgClass = "bg-neonCyan border-neonCyan text-bgDark";
                 textClass = "text-neonCyan font-bold";
               } else if (isSelectedAnswer) {
-                // Incorrect chosen index is highlighted in neonViolet (critical red alternative)
                 borderClass = "border-neonViolet bg-neonViolet/10 shadow-[0_0_10px_rgba(168,85,247,0.4)]";
                 letterBgClass = "bg-neonViolet border-neonViolet text-textPrimary";
                 textClass = "text-neonViolet font-bold";
               } else {
-                // Non-chosen incorrect answers are styled dimly
                 borderClass = "border-neonViolet/10 opacity-30 cursor-not-allowed";
                 letterBgClass = "bg-neonViolet/5 border-neonViolet/10 text-textMuted";
                 textClass = "text-textMuted";
@@ -584,11 +688,12 @@ function QuizContent() {
                 key={idx}
                 onClick={() => handleOptionSelect(idx)}
                 disabled={selectionState === "selected"}
-                className={`group flex items-center p-4 rounded-md border text-left transition-all duration-200 ${
+                aria-label={`Option ${letters[idx]}: ${option}`}
+                className={`group flex items-center p-4 rounded border text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neonCyan ${
                   selectionState === "selected" ? "cursor-not-allowed" : "cursor-pointer"
                 } ${borderClass}`}
               >
-                <span className={`w-8 h-8 rounded-md flex items-center justify-center font-mono font-bold mr-4 transition-colors duration-200 border ${letterBgClass}`}>
+                <span className={`w-8 h-8 rounded flex items-center justify-center font-display font-bold mr-4 transition-colors duration-200 border ${letterBgClass}`}>
                   {letters[idx]}
                 </span>
                 <span className={`text-sm font-semibold transition-colors duration-200 flex-1 ${textClass}`}>
@@ -602,7 +707,7 @@ function QuizContent() {
 
       {/* Answer Feedback Alert Banner */}
       {selectionState === "selected" && (
-        <div className={`w-full py-4 px-6 rounded-md mb-8 border font-mono text-center tracking-wider text-sm transition-all duration-300 ${
+        <div className={`w-full py-4 px-6 rounded mb-6 mt-6 border font-display text-center tracking-wider text-xs md:text-sm transition-all duration-300 ${
           isCorrectSelection
             ? "bg-neonCyan/10 border-neonCyan/40 text-neonCyan shadow-[0_0_15px_rgba(34,211,238,0.2)] animate-pulse"
             : "bg-neonViolet/10 border-neonViolet/40 text-neonViolet shadow-[0_0_15px_rgba(168,85,247,0.2)]"
@@ -616,10 +721,11 @@ function QuizContent() {
       )}
 
       {/* Bottom retreat option */}
-      <div className="w-full flex justify-between items-center mt-4">
+      <div className="w-full flex justify-between items-center mt-6">
         <Link
           href="/categories"
-          className="text-xs font-mono tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5"
+          onClick={clearSessionState}
+          className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
         >
           ← RETREAT (CATEGORIES)
         </Link>
@@ -633,7 +739,7 @@ export default function QuizPage() {
     <Suspense fallback={
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-12 h-12 rounded-full border-4 border-neonCyan border-t-transparent animate-spin mb-4"></div>
-        <span className="text-sm font-mono tracking-widest text-textMuted uppercase">LOADING QUIZ VECTOR...</span>
+        <span className="text-sm font-display tracking-widest text-textMuted uppercase">LOADING QUIZ VECTOR...</span>
       </div>
     }>
       <QuizContent />

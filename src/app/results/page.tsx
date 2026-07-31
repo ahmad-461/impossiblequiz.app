@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabase";
 import html2canvas from "html2canvas";
@@ -18,7 +18,15 @@ interface QuizResult {
   nickname?: string;
 }
 
-export default function ResultsPage() {
+const sanitizeNickname = (input: string): string => {
+  // Strip HTML tags
+  let cleaned = input.replace(/<\/?[^>]+(>|$)/g, "");
+  // Remove direct angle brackets
+  cleaned = cleaned.replace(/[<>]/g, "");
+  return cleaned.trim();
+};
+
+function ResultsContent() {
   const [result, setResult] = useState<QuizResult | null>(null);
   const [nickname, setNickname] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,7 +105,12 @@ export default function ResultsPage() {
   // Handle nickname submission to Supabase
   const handleScoreSubmission = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nickname.trim()) return;
+
+    const sanitized = sanitizeNickname(nickname);
+    if (!sanitized) {
+      setSubmitError("⚠️ SYSTEM ERROR: HANDLE CANNOT BE EMPTY");
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -106,7 +119,7 @@ export default function ResultsPage() {
       const { data, error } = await supabase
         .from("leaderboard")
         .insert({
-          nickname: nickname.trim(),
+          nickname: sanitized,
           category: activeResult.category,
           score: activeResult.score,
           streak: activeResult.peakStreak,
@@ -115,27 +128,25 @@ export default function ResultsPage() {
         .select()
         .single();
 
-      // If the proxy fallback occurred or there's an error
       if (error) {
         console.warn("Supabase entry error or offline warning:", error);
 
-        // We'll still save it in sessionStorage to make the client feel it worked!
+        // Fallback: Save in sessionStorage to show locally
         const updatedResult: QuizResult = {
           ...activeResult,
           submitted: true,
           submittedId: "local_" + Math.random().toString(36).substring(2, 9),
-          nickname: nickname.trim(),
+          nickname: sanitized,
         };
         sessionStorage.setItem("impossible_quiz_result", JSON.stringify(updatedResult));
         setResult(updatedResult);
         setSubmitError("Database offline. Score saved in temporary local session.");
       } else {
-        // Success path
         const updatedResult: QuizResult = {
           ...activeResult,
           submitted: true,
           submittedId: data?.id || "submitted_" + Math.random().toString(36).substring(2, 9),
-          nickname: nickname.trim(),
+          nickname: sanitized,
         };
         sessionStorage.setItem("impossible_quiz_result", JSON.stringify(updatedResult));
         setResult(updatedResult);
@@ -201,9 +212,9 @@ Can you survive the AI mainframe? Try now!`;
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none relative">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none relative animate-page-fade">
 
-      {/* Dynamic Celebratory / Pulsing Background Rings */}
+      {/* Dynamic Celebratory Background Rings */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes spin-slow {
           0% { transform: rotate(0deg); }
@@ -224,13 +235,13 @@ Can you survive the AI mainframe? Try now!`;
       )}
 
       {/* Outcome Badge */}
-      <div className={`mb-6 inline-flex items-center gap-2 border px-6 py-2.5 rounded-full text-xs md:text-sm font-black tracking-widest uppercase transition-all duration-300 ${
+      <div className={`mb-6 inline-flex items-center gap-2 border px-6 py-2.5 rounded-full text-xs md:text-sm font-black font-display tracking-widest uppercase transition-all duration-300 ${
         isVictory ? "animate-bounce" : ""
       } ${currentConfig.badgeStyle}`}>
         {currentConfig.badge}
       </div>
 
-      <h1 className={`text-4xl md:text-6xl font-black tracking-tight mb-2 text-center bg-gradient-to-r ${currentConfig.titleStyle}`}>
+      <h1 className={`text-4xl md:text-6xl font-black font-display tracking-tight mb-2 text-center bg-gradient-to-r text-transparent bg-clip-text ${currentConfig.titleStyle}`}>
         {currentConfig.title}
       </h1>
 
@@ -245,54 +256,54 @@ Can you survive the AI mainframe? Try now!`;
       >
         {/* Futuristic Card Watermark / Deco */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-neonViolet/5 transform rotate-45 translate-x-12 -translate-y-12 border-b border-l border-neonViolet/10"></div>
-        <div className="absolute bottom-2 right-4 text-[10px] font-mono text-neonViolet/25 tracking-widest uppercase">
+        <div className="absolute bottom-2 right-4 text-[10px] font-mono text-neonViolet/25 tracking-widest uppercase font-display">
           SECURE TERMINAL // CLEARANCE REPORT
         </div>
 
         {/* Share Card Header */}
-        <div className="border-b border-neonViolet/15 pb-4 mb-6 flex justify-between items-center">
+        <div className="border-b border-neonViolet/15 pb-4 mb-6 flex justify-between items-center select-none">
           <div className="flex flex-col">
-            <span className="text-[10px] font-mono tracking-widest text-textMuted uppercase">SYSTEM MODULE</span>
-            <span className="text-xs md:text-sm font-bold text-neonCyan font-mono uppercase">{categoryName}</span>
+            <span className="text-[10px] font-display tracking-widest text-textMuted uppercase">SYSTEM MODULE</span>
+            <span className="text-xs md:text-sm font-bold text-neonCyan font-display uppercase tracking-wider">{categoryName}</span>
           </div>
-          <div className="text-right flex flex-col">
-            <span className="text-[10px] font-mono tracking-widest text-textMuted uppercase">OUTCOME</span>
-            <span className={`text-xs md:text-sm font-black font-mono uppercase ${isVictory ? "text-neonCyan" : "text-neonViolet"}`}>
+          <div className="text-right flex flex-col font-display">
+            <span className="text-[10px] tracking-widest text-textMuted uppercase">OUTCOME</span>
+            <span className={`text-xs md:text-sm font-black uppercase ${isVictory ? "text-neonCyan" : "text-neonViolet"}`}>
               {activeResult.outcome.replace("_", " ")}
             </span>
           </div>
         </div>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center select-none font-display">
           {/* Score */}
           <div className="p-4 rounded bg-bgDark/50 border border-neonViolet/10 shadow-[inset_0_0_8px_rgba(168,85,247,0.05)]">
-            <span className="text-[10px] font-mono tracking-widest text-textMuted block uppercase mb-1">FINAL SCORE</span>
-            <span className="text-2xl md:text-3xl font-black text-neonCyan font-mono drop-shadow-[0_0_6px_rgba(34,211,238,0.3)]">
+            <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">FINAL SCORE</span>
+            <span className="text-2xl md:text-3xl font-black text-neonCyan drop-shadow-[0_0_6px_rgba(34,211,238,0.3)]">
               {activeResult.score.toLocaleString()}
             </span>
           </div>
 
           {/* Accuracy */}
           <div className="p-4 rounded bg-bgDark/50 border border-neonViolet/10 shadow-[inset_0_0_8px_rgba(168,85,247,0.05)]">
-            <span className="text-[10px] font-mono tracking-widest text-textMuted block uppercase mb-1">ACCURACY</span>
-            <span className="text-2xl md:text-3xl font-black text-neonViolet font-mono drop-shadow-[0_0_6px_rgba(168,85,247,0.3)]">
+            <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">ACCURACY</span>
+            <span className="text-2xl md:text-3xl font-black text-neonViolet drop-shadow-[0_0_6px_rgba(168,85,247,0.3)]">
               {activeResult.accuracy}%
             </span>
           </div>
 
           {/* Peak Streak */}
           <div className="p-4 rounded bg-bgDark/50 border border-neonViolet/10 shadow-[inset_0_0_8px_rgba(168,85,247,0.05)]">
-            <span className="text-[10px] font-mono tracking-widest text-textMuted block uppercase mb-1">PEAK STREAK</span>
-            <span className="text-2xl md:text-3xl font-black text-neonCyan font-mono drop-shadow-[0_0_6px_rgba(34,211,238,0.3)]">
+            <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">PEAK STREAK</span>
+            <span className="text-2xl md:text-3xl font-black text-neonCyan drop-shadow-[0_0_6px_rgba(34,211,238,0.3)]">
               {activeResult.peakStreak}
             </span>
           </div>
 
           {/* Questions */}
           <div className="p-4 rounded bg-bgDark/50 border border-neonViolet/10 shadow-[inset_0_0_8px_rgba(168,85,247,0.05)]">
-            <span className="text-[10px] font-mono tracking-widest text-textMuted block uppercase mb-1">COMPLETED</span>
-            <span className="text-2xl md:text-3xl font-black text-neonViolet font-mono drop-shadow-[0_0_6px_rgba(168,85,247,0.3)]">
+            <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">COMPLETED</span>
+            <span className="text-2xl md:text-3xl font-black text-neonViolet drop-shadow-[0_0_6px_rgba(168,85,247,0.3)]">
               {activeResult.correct}/{activeResult.total}
             </span>
           </div>
@@ -303,7 +314,7 @@ Can you survive the AI mainframe? Try now!`;
       <div className="w-full flex flex-col sm:flex-row gap-4 mb-10 justify-center">
         <button
           onClick={copyShareText}
-          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 text-xs font-bold tracking-widest uppercase transition-all duration-300 rounded border border-neonViolet/40 hover:border-neonViolet bg-bgDark hover:bg-neonViolet/5 text-textPrimary hover:shadow-[0_0_10px_rgba(168,85,247,0.2)]"
+          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 text-xs font-bold tracking-widest uppercase transition-all duration-300 rounded border border-neonViolet/40 hover:border-neonViolet bg-bgDark hover:bg-neonViolet/5 text-textPrimary hover:shadow-[0_0_10px_rgba(168,85,247,0.2)] focus:outline-none focus:ring-2 focus:ring-neonViolet"
         >
           {copied ? "📋 COPIED SECURELY!" : "🔗 COPY RESULT TEXT"}
         </button>
@@ -311,7 +322,7 @@ Can you survive the AI mainframe? Try now!`;
         <button
           onClick={downloadShareCard}
           disabled={downloading}
-          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 text-xs font-bold tracking-widest uppercase transition-all duration-300 rounded border border-neonCyan/40 hover:border-neonCyan bg-bgDark hover:bg-neonCyan/5 text-neonCyan hover:shadow-[0_0_10px_rgba(34,211,238,0.2)]"
+          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 text-xs font-bold tracking-widest uppercase transition-all duration-300 rounded border border-neonCyan/40 hover:border-neonCyan bg-bgDark hover:bg-neonCyan/5 text-neonCyan hover:shadow-[0_0_10px_rgba(34,211,238,0.2)] focus:outline-none focus:ring-2 focus:ring-neonCyan"
         >
           {downloading ? "⚙️ GENERATING CARD..." : "🖼️ DOWNLOAD SHARE IMAGE"}
         </button>
@@ -320,21 +331,21 @@ Can you survive the AI mainframe? Try now!`;
       {/* Nickname Submission Section */}
       <div className="w-full p-6 rounded-lg bg-bgDark border border-neonViolet/20 shadow-[0_0_15px_rgba(168,85,247,0.05)] mb-12">
         {activeResult.submitted ? (
-          <div className="text-center py-2">
-            <div className="inline-flex items-center gap-2 text-neonCyan font-mono text-sm font-black uppercase">
+          <div className="text-center py-2 font-display">
+            <div className="inline-flex items-center gap-2 text-neonCyan text-sm font-black uppercase">
               <span>✅ RECORD SECURED</span>
             </div>
-            <p className="text-xs text-textMuted mt-1 font-mono">
+            <p className="text-xs text-textMuted mt-1 tracking-wider">
               Handle <span className="text-neonCyan font-bold">{activeResult.nickname}</span> has been permanently logged with score <span className="text-neonCyan font-bold">{activeResult.score.toLocaleString()}</span>.
             </p>
             {submitError && (
-              <p className="text-[10px] text-neonViolet mt-1 font-mono">{submitError}</p>
+              <p className="text-[10px] text-neonViolet mt-1 tracking-wider">{submitError}</p>
             )}
           </div>
         ) : (
           <form onSubmit={handleScoreSubmission} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-black tracking-widest text-textPrimary uppercase font-mono">
+            <div className="flex flex-col gap-1 font-display">
+              <h3 className="text-sm font-black tracking-widest text-textPrimary uppercase">
                 TRANSMIT SCORE TO ARCHIVES
               </h3>
               <p className="text-xs text-textMuted">
@@ -345,24 +356,24 @@ Can you survive the AI mainframe? Try now!`;
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
-                maxLength={20}
+                maxLength={15}
                 required
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                placeholder="NICKNAME (E.G., PLAYER_1)"
+                placeholder="NICKNAME (MAX 15 CHARS)"
                 disabled={isSubmitting}
-                className="flex-1 bg-bgDark/80 border border-neonViolet/30 focus:border-neonCyan rounded px-4 py-3 text-sm font-mono text-textPrimary placeholder:text-textMuted/40 focus:outline-none focus:ring-1 focus:ring-neonCyan transition-all"
+                className="flex-1 bg-bgDark/80 border border-neonViolet/30 focus:border-neonCyan rounded px-4 py-3 text-sm font-display text-textPrimary placeholder:text-textMuted/40 focus:outline-none focus:ring-1 focus:ring-neonCyan transition-all uppercase"
               />
               <button
                 type="submit"
                 disabled={isSubmitting || !nickname.trim()}
-                className="bg-neonViolet hover:bg-neonViolet/90 disabled:opacity-50 text-textPrimary text-xs font-black tracking-widest uppercase px-6 py-3 rounded border border-transparent hover:border-neonCyan shadow-[0_0_10px_rgba(168,85,247,0.3)] transition-all flex items-center justify-center min-w-[140px]"
+                className="bg-neonViolet hover:bg-neonViolet/90 disabled:opacity-50 text-textPrimary text-xs font-black tracking-widest uppercase px-6 py-3 rounded border border-transparent hover:border-neonCyan shadow-[0_0_10px_rgba(168,85,247,0.3)] focus:outline-none focus:ring-2 focus:ring-neonCyan transition-all flex items-center justify-center min-w-[140px] font-display"
               >
                 {isSubmitting ? "TRANSMITTING..." : "SUBMIT SCORE"}
               </button>
             </div>
             {submitError && (
-              <p className="text-xs text-neonViolet font-mono mt-1 text-center sm:text-left">{submitError}</p>
+              <p className="text-xs text-neonViolet font-display mt-1 text-center sm:text-left">{submitError}</p>
             )}
           </form>
         )}
@@ -373,7 +384,7 @@ Can you survive the AI mainframe? Try now!`;
         {/* Play Again */}
         <Link
           href="/categories"
-          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded-md border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet font-display"
         >
           PLAY AGAIN
         </Link>
@@ -381,7 +392,7 @@ Can you survive the AI mainframe? Try now!`;
         {/* View Leaderboard */}
         <Link
           href="/leaderboard"
-          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded-md bg-neonCyan text-bgDark hover:bg-neonCyan/90 hover:shadow-[0_0_20px_rgba(34,211,238,0.6)]"
+          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded bg-neonCyan text-bgDark hover:bg-neonCyan/90 hover:shadow-[0_0_20px_rgba(34,211,238,0.6)] focus:outline-none focus:ring-2 focus:ring-neonCyan font-display"
         >
           VIEW LEADERBOARD
         </Link>
@@ -390,10 +401,23 @@ Can you survive the AI mainframe? Try now!`;
       {/* Home retreat option */}
       <Link
         href="/"
-        className="mt-12 text-xs font-mono tracking-widest text-textMuted hover:text-neonCyan transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonCyan/50 pb-0.5"
+        className="mt-12 text-xs font-display tracking-widest text-textMuted hover:text-neonCyan transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonCyan/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonCyan"
       >
         ← ESCAPE TO HEADQUARTERS (HOME)
       </Link>
     </div>
+  );
+}
+
+export default function ResultsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-12 h-12 rounded-full border-4 border-neonCyan border-t-transparent animate-spin mb-4"></div>
+        <span className="text-sm font-display tracking-widest text-textMuted uppercase">LOADING RESULTS VECTOR...</span>
+      </div>
+    }>
+      <ResultsContent />
+    </Suspense>
   );
 }

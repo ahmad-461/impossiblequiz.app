@@ -1,0 +1,39 @@
+
+> impossible-quiz-generator@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.1.7
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+
+ ✓ Starting...
+ ✓ Ready in 1795ms
+ ○ Compiling /categories ...
+ ✓ Compiled /categories in 6.7s (628 modules)
+ GET /categories 200 in 7608ms
+ ✓ Compiled in 254ms (296 modules)
+ ○ Compiling /quiz ...
+ ✓ Compiled /quiz in 944ms (618 modules)
+ GET /quiz?category=programming 200 in 1233ms
+ ✓ Compiled /api/generate-question in 336ms (637 modules)
+GEMINI_API_KEY is not defined in environment variables.
+GEMINI_API_KEY is not defined in environment variables.
+GEMINI_API_KEY is not defined in environment variables.
+GEMINI_API_KEY is not defined in environment variables.
+ POST /api/generate-question 200 in 583ms
+ POST /api/generate-question 200 in 586ms
+ ✓ Compiled /_not-found in 228ms (641 modules)
+GEMINI_API_KEY is not defined in environment variables.
+GEMINI_API_KEY is not defined in environment variables.
+GEMINI_API_KEY is not defined in environment variables.
+GEMINI_API_KEY is not defined in environment variables.
+ POST /api/generate-question 200 in 33ms
+ POST /api/generate-question 200 in 35ms
+ POST /api/difficulty-engine 404 in 424ms
+ POST /api/difficulty-engine 404 in 422ms
+ POST /api/difficulty-engine 404 in 22ms
+ POST /api/difficulty-engine 404 in 30ms
+GEMINI_API_KEY is not defined in environment variables.
+GEMINI_API_KEY is not defined in environment variables.
+ POST /api/generate-question 200 in 12ms
+ ✓ Compiled in 704ms (628 modules)

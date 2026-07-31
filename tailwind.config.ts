@@ -15,6 +15,10 @@ const config: Config = {
         textPrimary: "#f5f5f5",
         textMuted: "#9ca3af",
       },
+      fontFamily: {
+        sans: ["var(--font-inter)", "sans-serif"],
+        display: ["var(--font-orbitron)", "sans-serif"],
+      },
     },
   },
   plugins: [],

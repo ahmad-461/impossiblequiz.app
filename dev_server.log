@@ -2,45 +2,18 @@
 > impossible-quiz-generator@0.1.0 dev
 > next dev
 
-   ▲ Next.js 15.1.11
+   ▲ Next.js 15.5.22
    - Local:        http://localhost:3000
    - Network:      http://192.168.0.2:3000
 
  ✓ Starting...
- ✓ Ready in 1870ms
+ ✓ Ready in 2s
  ○ Compiling / ...
- ✓ Compiled / in 5s (628 modules)
- HEAD / 200 in 5425ms
- ✓ Compiled in 181ms (296 modules)
- GET / 200 in 97ms
- ○ Compiling /categories ...
- ✓ Compiled /categories in 769ms (607 modules)
- GET /categories 200 in 923ms
- ○ Compiling /quiz ...
- ✓ Compiled /quiz in 621ms (620 modules)
- GET /quiz?category=programming 200 in 789ms
- ✓ Compiled /api/generate-question in 426ms (639 modules)
-GEMINI_API_KEY is not defined in environment variables.
-GEMINI_API_KEY is not defined in environment variables.
-GEMINI_API_KEY is not defined in environment variables.
-GEMINI_API_KEY is not defined in environment variables.
- POST /api/generate-question 200 in 659ms
- POST /api/generate-question 200 in 663ms
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 1219ms (643 modules)
-GEMINI_API_KEY is not defined in environment variables.
-GEMINI_API_KEY is not defined in environment variables.
- POST /api/generate-question 200 in 39ms
- POST /api/difficulty-engine 404 in 1451ms
- POST /api/difficulty-engine 404 in 1448ms
- POST /api/difficulty-engine 404 in 406ms
-GEMINI_API_KEY is not defined in environment variables.
-GEMINI_API_KEY is not defined in environment variables.
- POST /api/generate-question 200 in 50ms
-GEMINI_API_KEY is not defined in environment variables.
-GEMINI_API_KEY is not defined in environment variables.
- POST /api/generate-question 200 in 9ms
- POST /api/difficulty-engine 404 in 33ms
-GEMINI_API_KEY is not defined in environment variables.
-GEMINI_API_KEY is not defined in environment variables.
- POST /api/generate-question 200 in 15ms
+ ✓ Compiled / in 9s (631 modules)
+ ✓ Compiled in 302ms (237 modules)
+ GET / 200 in 10469ms
+ ○ Compiling /results ...
+ ✓ Compiled /results in 2.3s (708 modules)
+ GET /results 200 in 3364ms
+ ✓ Compiled /leaderboard in 484ms (715 modules)
+ GET /leaderboard 200 in 672ms

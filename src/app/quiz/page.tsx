@@ -88,7 +88,7 @@ function QuizContent() {
   const finishQuiz = (
     finalScore: number,
     finalPeakStreak: number,
-    outcome: "boss_victory" | "pool_victory" | "defeat",
+    outcome: "boss_victory" | "pool_victory" | "defeat" | "boss_defeat",
     correct: number,
     total: number
   ) => {
@@ -333,7 +333,8 @@ function QuizContent() {
 
     setTimeout(async () => {
       if (isGameOver) {
-        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "defeat", nextCorrect, totalQuestionsAnswered + 1);
+        const finalOutcome = currentQuestion.isBossRound ? "boss_defeat" : "defeat";
+        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), finalOutcome, nextCorrect, totalQuestionsAnswered + 1);
         return;
       }
 
@@ -502,23 +503,38 @@ function QuizContent() {
       </div>
 
       {/* Main Question Display */}
-      <div className="w-full p-8 rounded-lg bg-bgDark border-2 border-neonViolet/30 shadow-[0_0_15px_rgba(168,85,247,0.1)] mb-8 relative">
+      <div className={`w-full p-8 rounded-lg transition-all duration-300 relative ${
+        currentQuestion.isBossRound
+          ? "bg-gradient-to-b from-[#150a25] to-bgDark border-2 border-neonViolet shadow-[0_0_25px_rgba(168,85,247,0.3)] animate-pulse"
+          : "bg-bgDark border-2 border-neonViolet/30 shadow-[0_0_15px_rgba(168,85,247,0.1)]"
+      }`}>
         {/* Glow corners decoration */}
         <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-neonCyan"></div>
         <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-neonCyan"></div>
 
+        {/* Boss Round Alert Banner */}
+        {currentQuestion.isBossRound && (
+          <div className="mb-6 bg-neonViolet/20 border border-neonViolet px-4 py-3 rounded text-neonViolet font-mono font-black text-center tracking-widest text-xs md:text-sm shadow-[0_0_15px_rgba(168,85,247,0.2)] animate-pulse">
+            ⚠️ WARNING // ULTRA-SECURITY PROTOCOL // BOSS ROUND ACTIVE ⚠️
+          </div>
+        )}
+
         <div className="flex flex-wrap justify-between items-center gap-4">
-          <span className="text-xs font-mono tracking-widest text-neonCyan bg-neonCyan/10 border border-neonCyan/20 px-2.5 py-1 rounded uppercase">
+          <span className={`text-xs font-mono tracking-widest px-2.5 py-1 rounded uppercase border ${
+            currentQuestion.isBossRound
+              ? "text-neonViolet bg-neonViolet/10 border-neonViolet/30"
+              : "text-neonCyan bg-neonCyan/10 border-neonCyan/25"
+          }`}>
             DIFFICULTY: {currentDifficulty}
           </span>
 
           {currentQuestion.isBossRound && (
-            <span className="text-xs font-mono tracking-widest text-neonViolet bg-neonViolet/10 border border-neonViolet/20 px-2.5 py-1 rounded animate-pulse">
+            <span className="text-xs font-mono tracking-widest text-neonViolet bg-neonViolet/10 border border-neonViolet/20 px-2.5 py-1 rounded animate-pulse font-bold">
               ⚠️ BOSS ROUND ⚠️
             </span>
           )}
 
-          <span className="text-xs font-mono tracking-widest text-textMuted">
+          <span className="text-xs font-mono tracking-widest text-textMuted font-semibold">
             {totalQuestionsAnswered + 1} OF 10 ESTIMATED
           </span>
         </div>
@@ -533,8 +549,12 @@ function QuizContent() {
             const letters = ["A", "B", "C", "D"];
 
             // Selection feedback styles
-            let borderClass = "border-neonViolet/20 hover:border-neonCyan hover:bg-neonCyan/5";
-            let letterBgClass = "bg-neonViolet/10 group-hover:bg-neonCyan/20 border-neonViolet/30 group-hover:border-neonCyan text-neonViolet group-hover:text-neonCyan";
+            let borderClass = currentQuestion.isBossRound
+              ? "border-neonViolet/30 hover:border-neonViolet hover:bg-neonViolet/10"
+              : "border-neonViolet/20 hover:border-neonCyan hover:bg-neonCyan/5";
+            let letterBgClass = currentQuestion.isBossRound
+              ? "bg-neonViolet/15 group-hover:bg-neonViolet/35 border-neonViolet/40 group-hover:border-neonViolet text-neonViolet"
+              : "bg-neonViolet/10 group-hover:bg-neonCyan/20 border-neonViolet/30 group-hover:border-neonCyan text-neonViolet group-hover:text-neonCyan";
             let textClass = "text-textMuted group-hover:text-textPrimary";
 
             if (selectionState === "selected") {

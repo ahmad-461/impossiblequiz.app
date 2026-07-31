@@ -12,9 +12,6 @@ function QuizContent() {
   // Selected Category ID (e.g. programming, logic-algorithms, data-analytics, computer-science-fundamentals)
   const categoryId = searchParams.get("category") || "programming";
 
-  // Filter pool questions to the current category
-  const categoryQuestions = staticQuestions.filter((q) => q.category === categoryId);
-
   // States
   const [lives, setLives] = useState<number>(3);
   const [score, setScore] = useState<number>(0);
@@ -23,18 +20,20 @@ function QuizContent() {
   const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState<number>(0);
   const [totalCorrectAnswers, setTotalCorrectAnswers] = useState<number>(0);
 
-  // Difficulty States
+  // Difficulty States & History
   const [currentDifficulty, setCurrentDifficulty] = useState<"easy" | "medium" | "hard">("easy");
-  // Streak *within* the current difficulty level
-  const [difficultyStreak, setDifficultyStreak] = useState<number>(0);
+  const [history, setHistory] = useState<{ correct: boolean; difficulty: "easy" | "medium" | "hard" }[]>([]);
+  const [alreadyAskedTexts, setAlreadyAskedTexts] = useState<string[]>([]);
+  const [alreadyAskedIds, setAlreadyAskedIds] = useState<string[]>([]);
 
-  // Remaining unanswered question IDs
-  const [unansweredIds, setUnansweredIds] = useState<string[]>([]);
-  // Current active question
+  // Current active question & Pre-fetched question
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [nextQuestion, setNextQuestion] = useState<Question | null>(null);
+  const [nextQuestionDifficulty, setNextQuestionDifficulty] = useState<"easy" | "medium" | "hard" | null>(null);
+  const [nextQuestionIsBoss, setNextQuestionIsBoss] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Feedback Selection State
-  // "idle" | "selected"
   const [selectionState, setSelectionState] = useState<"idle" | "selected">("idle");
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isCorrectSelection, setIsCorrectSelection] = useState<boolean | null>(null);
@@ -43,101 +42,224 @@ function QuizContent() {
   const [timer, setTimer] = useState<number>(30);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Keep stable helper references or use state/ref to avoid dependency warnings
-  const selectNextQuestionRef = useRef<((targetDiff: "easy" | "medium" | "hard", poolIds: string[], lastQuestionId: string | null) => void) | null>(null);
+  // References for keeping state updated in callbacks
   const handleTimeoutRef = useRef<(() => void) | null>(null);
 
-  // Define helper function
-  const selectNextQuestion = (
-    targetDiff: "easy" | "medium" | "hard",
-    poolIds: string[],
-    lastQuestionId: string | null
-  ) => {
-    // Candidates are unanswered questions in the current difficulty
-    let candidates = categoryQuestions.filter(
-      (q) => poolIds.includes(q.id) && q.difficulty === targetDiff && q.id !== lastQuestionId
-    );
+  // Helper to check if the simulated/actual history should trigger a Boss Round
+  const checkIsBossRound = (hist: { correct: boolean; difficulty: "easy" | "medium" | "hard" }[]): boolean => {
+    if (hist.length < 3) return false;
+    const last3 = hist.slice(-3);
+    return last3.every((h) => h.correct && h.difficulty === "hard");
+  };
 
-    // If target difficulty has no questions left, fallback search:
+  // Helper to fetch a question from our Next.js API Route
+  const fetchQuestionFromAPI = async (
+    diff: "easy" | "medium" | "hard",
+    isBoss: boolean,
+    askedTexts: string[],
+    askedIds: string[]
+  ): Promise<Question | null> => {
+    try {
+      const response = await fetch("/api/generate-question", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          category: categoryId,
+          difficulty: diff,
+          alreadyAskedTexts: askedTexts,
+          alreadyAskedIds: askedIds,
+          isBossRound: isBoss,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.question;
+      }
+    } catch (e) {
+      console.error("Failed to fetch question from API:", e);
+    }
+    return null;
+  };
+
+  // Helper to select a static question on client-side fallback
+  const getClientFallbackQuestion = (
+    diff: "easy" | "medium" | "hard",
+    isBoss: boolean,
+    askedTexts: string[],
+    askedIds: string[]
+  ): Question | null => {
+    let candidates = staticQuestions.filter((q) => {
+      const matchCategory = q.category === categoryId;
+      const matchBoss = isBoss ? q.isBossRound : !q.isBossRound;
+      const matchDiff = isBoss ? true : q.difficulty === diff;
+      const notAskedId = !askedIds.includes(q.id);
+      const notAskedText = !askedTexts.includes(q.questionText);
+      return matchCategory && matchBoss && matchDiff && notAskedId && notAskedText;
+    });
+
     if (candidates.length === 0) {
-      const fallbackDiffs: ("easy" | "medium" | "hard")[] = ["hard", "medium", "easy"];
-      for (const d of fallbackDiffs) {
-        candidates = categoryQuestions.filter(
-          (q) => poolIds.includes(q.id) && q.difficulty === d && q.id !== lastQuestionId
-        );
-        if (candidates.length > 0) {
-          targetDiff = d;
-          setCurrentDifficulty(d);
+      // Relax already-asked text/id filters
+      candidates = staticQuestions.filter((q) => {
+        const matchCategory = q.category === categoryId;
+        const matchBoss = isBoss ? q.isBossRound : !q.isBossRound;
+        const matchDiff = isBoss ? true : q.difficulty === diff;
+        return matchCategory && matchBoss && matchDiff;
+      });
+    }
+
+    if (candidates.length === 0) {
+      // Relax difficulty / boss round completely
+      candidates = staticQuestions.filter((q) => q.category === categoryId);
+    }
+
+    if (candidates.length === 0) {
+      // Absolute fallback
+      candidates = staticQuestions;
+    }
+
+    const randIdx = Math.floor(Math.random() * candidates.length);
+    return candidates[randIdx] || null;
+  };
+
+  // Package state and navigate to /results
+  const finishQuiz = (
+    finalScore: number,
+    finalPeakStreak: number,
+    outcome: "boss_victory" | "pool_victory" | "defeat",
+    correct: number,
+    total: number
+  ) => {
+    const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const resultState = {
+      score: finalScore,
+      peakStreak: finalPeakStreak,
+      category: categoryId,
+      outcome,
+      accuracy,
+      correct,
+      total,
+    };
+    sessionStorage.setItem("impossible_quiz_result", JSON.stringify(resultState));
+    router.push("/results");
+  };
+
+  // Helper to trigger optimistic pre-fetching for the subsequent question
+  const triggerPrefetch = async (
+    currQuestion: Question,
+    currHistory: { correct: boolean; difficulty: "easy" | "medium" | "hard" }[],
+    askedTexts: string[],
+    askedIds: string[]
+  ) => {
+    // Optimistic prediction: assume player gets the current question correct
+    const simHistory = [...currHistory, { correct: true, difficulty: currQuestion.difficulty }];
+
+    let predictedDiff: "easy" | "medium" | "hard" = "easy";
+    try {
+      const res = await fetch("/api/difficulty-engine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history: simHistory }),
+      });
+      if (!res.ok) {
+        throw new Error(`Difficulty engine prefetch responded with status ${res.status}`);
+      }
+      const data = await res.json();
+      predictedDiff = data.nextDifficulty;
+    } catch (err) {
+      console.error("Error predicting difficulty in pre-fetch, using client-side fallback:", err);
+
+      // Client-side fallback prediction logic
+      // Streak of 3 correct answers within the same tier promotes
+      // Since we simulate getting currQuestion correct, let's see how many consecutive we have
+      let suffixCount = 0;
+      for (let i = simHistory.length - 1; i >= 0; i--) {
+        if (simHistory[i].correct && simHistory[i].difficulty === currQuestion.difficulty) {
+          suffixCount++;
+        } else {
           break;
         }
       }
-    }
 
-    if (candidates.length === 0) {
-      setCurrentQuestion(null);
-      return;
-    }
-
-    const nonBossHardCandidates = candidates.filter((q) => !q.isBossRound);
-    const bossHardCandidate = candidates.find((q) => q.isBossRound);
-
-    let finalSelection: Question;
-
-    if (targetDiff === "hard") {
-      if (nonBossHardCandidates.length > 0) {
-        const randIdx = Math.floor(Math.random() * nonBossHardCandidates.length);
-        finalSelection = nonBossHardCandidates[randIdx];
-      } else if (bossHardCandidate) {
-        finalSelection = bossHardCandidate;
+      if (suffixCount >= 3) {
+        if (currQuestion.difficulty === "easy") predictedDiff = "medium";
+        else if (currQuestion.difficulty === "medium") predictedDiff = "hard";
+        else predictedDiff = "hard";
       } else {
-        const randIdx = Math.floor(Math.random() * candidates.length);
-        finalSelection = candidates[randIdx];
+        predictedDiff = currQuestion.difficulty;
       }
-    } else {
-      const randIdx = Math.floor(Math.random() * candidates.length);
-      finalSelection = candidates[randIdx];
     }
 
-    setCurrentQuestion(finalSelection);
+    const isBoss = checkIsBossRound(simHistory);
+
+    // Call API in the background to fetch question
+    const prefetched = await fetchQuestionFromAPI(predictedDiff, isBoss, askedTexts, askedIds);
+    if (prefetched) {
+      setNextQuestion(prefetched);
+      setNextQuestionDifficulty(predictedDiff);
+      setNextQuestionIsBoss(isBoss);
+    }
   };
-
-  useEffect(() => {
-    selectNextQuestionRef.current = selectNextQuestion;
-  });
-
 
   // Initialize Quiz Session once on mount (or if category changes)
   useEffect(() => {
-    // staticQuestions is static, categoryId is query param
-    const currentPool = staticQuestions.filter((q) => q.category === categoryId);
-    const ids = currentPool.map((q) => q.id);
-    setUnansweredIds(ids);
-    setLives(3);
-    setScore(0);
-    setStreak(0);
-    setPeakStreak(0);
-    setTotalQuestionsAnswered(0);
-    setTotalCorrectAnswers(0);
-    setCurrentDifficulty("easy");
-    setDifficultyStreak(0);
-    setSelectionState("idle");
-    setSelectedIdx(null);
-    setIsCorrectSelection(null);
-    setTimer(30);
+    const initializeQuiz = async () => {
+      setIsLoading(true);
+      setLives(3);
+      setScore(0);
+      setStreak(0);
+      setPeakStreak(0);
+      setTotalQuestionsAnswered(0);
+      setTotalCorrectAnswers(0);
+      setCurrentDifficulty("easy");
+      setHistory([]);
+      setSelectionState("idle");
+      setSelectedIdx(null);
+      setIsCorrectSelection(null);
+      setTimer(30);
 
-    // Choose first question
-    if (selectNextQuestionRef.current) {
-      selectNextQuestionRef.current("easy", ids, null);
-    }
+      // Clear pre-fetches
+      setNextQuestion(null);
+      setNextQuestionDifficulty(null);
+      setNextQuestionIsBoss(false);
+
+      // Load first question on-demand (difficulty: easy, not boss, empty asked lists)
+      let firstQuestion = await fetchQuestionFromAPI("easy", false, [], []);
+
+      if (!firstQuestion) {
+        console.warn("API question fetch failed on initialization. Falling back to client-side static question.");
+        firstQuestion = getClientFallbackQuestion("easy", false, [], []);
+      }
+
+      if (firstQuestion) {
+        setCurrentQuestion(firstQuestion);
+        const askedTexts = [firstQuestion.questionText];
+        const askedIds = [firstQuestion.id];
+        setAlreadyAskedTexts(askedTexts);
+        setAlreadyAskedIds(askedIds);
+
+        // Prefetch the next question
+        triggerPrefetch(firstQuestion, [], askedTexts, askedIds);
+      } else {
+        // If we can't even get the first question, finish
+        finishQuiz(0, 0, "defeat", 0, 0);
+      }
+      setIsLoading(false);
+    };
+
+    initializeQuiz();
 
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId]);
 
   // Handle countdown Timer
   useEffect(() => {
-    if (selectionState === "selected" || !currentQuestion) {
+    if (selectionState === "selected" || !currentQuestion || isLoading) {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       return;
     }
@@ -161,105 +283,35 @@ function QuizContent() {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [currentQuestion, selectionState]);
+  }, [currentQuestion, selectionState, isLoading]);
 
-  // Define timeout function
-  const handleTimeout = () => {
-    setSelectionState("selected");
-    setSelectedIdx(null);
-    setIsCorrectSelection(false);
-
-    setStreak(0);
-    setDifficultyStreak(0);
-
-    const nextLives = lives - 1;
-    setLives(nextLives);
-    setTotalQuestionsAnswered((prev) => prev + 1);
-
-    const nextDiff = getLowerDifficulty(currentDifficulty);
-    setCurrentDifficulty(nextDiff);
-
-    const nextUnanswered = unansweredIds.filter((id) => id !== currentQuestion?.id);
-    setUnansweredIds(nextUnanswered);
-
-    setTimeout(() => {
-      if (nextLives <= 0) {
-        finishQuiz(0, streak, "defeat", totalCorrectAnswers, totalQuestionsAnswered + 1);
-      } else {
-        advanceNext(nextDiff, nextUnanswered);
-      }
-    }, 2000);
-  };
-
-  useEffect(() => {
-    handleTimeoutRef.current = handleTimeout;
-  });
-
-  // Helper to drop difficulty
-  const getLowerDifficulty = (diff: "easy" | "medium" | "hard"): "easy" | "medium" | "hard" => {
-    if (diff === "hard") return "medium";
-    return "easy";
-  };
-
-  // Helper to increase difficulty
-  const getHigherDifficulty = (diff: "easy" | "medium" | "hard"): "easy" | "medium" | "hard" => {
-    if (diff === "easy") return "medium";
-    if (diff === "medium") return "hard";
-    return "hard";
-  };
-
-
-  // Logic to advance after a result feedback delay
-  const advanceNext = (nextDiff: "easy" | "medium" | "hard", nextUnanswered: string[]) => {
-    setSelectionState("idle");
-    setSelectedIdx(null);
-    setIsCorrectSelection(null);
-
-    // If no questions are left in unanswered pool, finish as pool_victory
-    if (nextUnanswered.length === 0) {
-      finishQuiz(score, streak, "pool_victory", totalCorrectAnswers, totalQuestionsAnswered);
-      return;
-    }
-
-    if (selectNextQuestionRef.current) {
-      selectNextQuestionRef.current(nextDiff, nextUnanswered, currentQuestion?.id || null);
-    }
-  };
-
-  // Handle option selection
-  const handleOptionSelect = (idx: number) => {
+  // Unified logic to process an answer (either select option or timeout)
+  const processAnswer = async (correct: boolean, chosenIdx: number | null) => {
     if (selectionState === "selected" || !currentQuestion) return;
 
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
 
     setSelectionState("selected");
-    setSelectedIdx(idx);
-    const correct = idx === currentQuestion.correctAnswerIndex;
+    setSelectedIdx(chosenIdx);
     setIsCorrectSelection(correct);
 
-    const nextUnanswered = unansweredIds.filter((id) => id !== currentQuestion.id);
-    setUnansweredIds(nextUnanswered);
     setTotalQuestionsAnswered((prev) => prev + 1);
 
     let nextLives = lives;
     let nextScore = score;
     let nextStreak = streak;
-    let nextDiff = currentDifficulty;
-    let nextDiffStreak = difficultyStreak;
     let nextCorrect = totalCorrectAnswers;
 
     if (correct) {
       nextCorrect += 1;
       setTotalCorrectAnswers(nextCorrect);
 
-      // Calculate streak
       nextStreak += 1;
       setStreak(nextStreak);
       if (nextStreak > peakStreak) {
         setPeakStreak(nextStreak);
       }
 
-      // Calculate score points
       let basePoints = 100;
       if (currentDifficulty === "medium") basePoints = 200;
       if (currentDifficulty === "hard") basePoints = 300;
@@ -267,84 +319,155 @@ function QuizContent() {
       const scoredPoints = Math.round(basePoints * (1 + nextStreak * 0.1));
       nextScore += scoredPoints;
       setScore(nextScore);
-
-      // Handle difficulty progression
-      nextDiffStreak += 1;
-      if (nextDiffStreak >= 3) {
-        // Promote difficulty
-        const promotedDiff = getHigherDifficulty(currentDifficulty);
-        nextDiff = promotedDiff;
-        setCurrentDifficulty(promotedDiff);
-        // Reset local difficulty streak
-        nextDiffStreak = 0;
-        setDifficultyStreak(0);
-      } else {
-        setDifficultyStreak(nextDiffStreak);
-      }
     } else {
-      // Wrong answer
       nextStreak = 0;
       setStreak(0);
-      nextDiffStreak = 0;
-      setDifficultyStreak(0);
-
-      // Lose life
       nextLives -= 1;
       setLives(nextLives);
-
-      // Drop difficulty immediately
-      const demotedDiff = getLowerDifficulty(currentDifficulty);
-      nextDiff = demotedDiff;
-      setCurrentDifficulty(demotedDiff);
     }
 
-    // Check end condition
-    setTimeout(() => {
-      // 1. Defeat
-      if (nextLives <= 0) {
+    // Append to actual history
+    const newHistoryItem = { correct, difficulty: currentDifficulty };
+    const updatedHistory = [...history, newHistoryItem];
+    setHistory(updatedHistory);
+
+    // Call Python difficulty engine with actual updated history
+    let nextDiff: "easy" | "medium" | "hard" = "easy";
+    try {
+      const res = await fetch("/api/difficulty-engine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history: updatedHistory }),
+      });
+      if (!res.ok) {
+        throw new Error(`Difficulty engine responded with status ${res.status}`);
+      }
+      const data = await res.json();
+      nextDiff = data.nextDifficulty;
+    } catch (e) {
+      console.error("Error calling difficulty engine, falling back to client-side logic:", e);
+      // Fallback logic
+      if (correct) {
+        // Count consecutive correct answers of the same tier at the end of updatedHistory
+        let suffixCount = 0;
+        for (let i = updatedHistory.length - 1; i >= 0; i--) {
+          if (updatedHistory[i].correct && updatedHistory[i].difficulty === currentDifficulty) {
+            suffixCount++;
+          } else {
+            break;
+          }
+        }
+        if (suffixCount >= 3) {
+          if (currentDifficulty === "easy") nextDiff = "medium";
+          else if (currentDifficulty === "medium") nextDiff = "hard";
+          else nextDiff = "hard";
+        } else {
+          nextDiff = currentDifficulty;
+        }
+      } else {
+        if (currentDifficulty === "hard") nextDiff = "medium";
+        else nextDiff = "easy";
+      }
+    }
+
+    // Check if the next question should be a Boss Round
+    const nextIsBoss = checkIsBossRound(updatedHistory);
+
+    const isGameOver = nextLives <= 0;
+    const isBossVictory = correct && currentQuestion.isBossRound;
+
+    setTimeout(async () => {
+      if (isGameOver) {
         finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "defeat", nextCorrect, totalQuestionsAnswered + 1);
         return;
       }
 
-      // 2. Boss Defeated (Was it the boss question and answered correctly?)
-      if (correct && currentQuestion.isBossRound) {
+      if (isBossVictory) {
         finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "boss_victory", nextCorrect, totalQuestionsAnswered + 1);
         return;
       }
 
-      // 3. Pool cleared or advance
-      if (nextUnanswered.length === 0) {
-        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "pool_victory", nextCorrect, totalQuestionsAnswered + 1);
+      // Transition to next question
+      let nextActiveQuestion: Question | null = null;
+
+      const isPreFetchValid =
+        nextQuestion !== null &&
+        nextQuestionDifficulty === nextDiff &&
+        nextQuestionIsBoss === nextIsBoss;
+
+      const currentAskedTexts = [...alreadyAskedTexts];
+      const currentAskedIds = [...alreadyAskedIds];
+
+      if (isPreFetchValid && nextQuestion) {
+        nextActiveQuestion = nextQuestion;
+        currentAskedTexts.push(nextQuestion.questionText);
+        currentAskedIds.push(nextQuestion.id);
+        setAlreadyAskedTexts(currentAskedTexts);
+        setAlreadyAskedIds(currentAskedIds);
       } else {
-        advanceNext(nextDiff, nextUnanswered);
+        // Pre-fetch invalid or mismatched (e.g. they answered wrong so difficulty demoted), fetch on-demand
+        setIsLoading(true);
+        nextActiveQuestion = await fetchQuestionFromAPI(
+          nextDiff,
+          nextIsBoss,
+          currentAskedTexts,
+          currentAskedIds
+        );
+        setIsLoading(false);
+
+        if (!nextActiveQuestion) {
+          console.warn(`API question fetch failed on-demand for difficulty ${nextDiff}. Falling back to client-side static question.`);
+          nextActiveQuestion = getClientFallbackQuestion(nextDiff, nextIsBoss, currentAskedTexts, currentAskedIds);
+        }
+
+        if (nextActiveQuestion) {
+          currentAskedTexts.push(nextActiveQuestion.questionText);
+          currentAskedIds.push(nextActiveQuestion.id);
+          setAlreadyAskedTexts(currentAskedTexts);
+          setAlreadyAskedIds(currentAskedIds);
+        }
       }
+
+      if (!nextActiveQuestion) {
+        // If we can't obtain a new question, finish the quiz gracefully
+        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "pool_victory", nextCorrect, totalQuestionsAnswered + 1);
+        return;
+      }
+
+      // Reset state for the next question
+      setSelectionState("idle");
+      setSelectedIdx(null);
+      setIsCorrectSelection(null);
+      setCurrentDifficulty(nextDiff);
+      setCurrentQuestion(nextActiveQuestion);
+
+      // Reset next question slot
+      setNextQuestion(null);
+      setNextQuestionDifficulty(null);
+      setNextQuestionIsBoss(false);
+
+      // Trigger pre-fetch for the subsequent question
+      triggerPrefetch(nextActiveQuestion, updatedHistory, currentAskedTexts, currentAskedIds);
     }, 2000);
   };
 
-  // Package state and navigate to /results
-  const finishQuiz = (
-    finalScore: number,
-    finalPeakStreak: number,
-    outcome: "boss_victory" | "pool_victory" | "defeat",
-    correct: number,
-    total: number
-  ) => {
-    const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
-    const resultState = {
-      score: finalScore,
-      peakStreak: finalPeakStreak,
-      category: categoryId,
-      outcome,
-      accuracy,
-      correct,
-      total
-    };
-    sessionStorage.setItem("impossible_quiz_result", JSON.stringify(resultState));
-    router.push("/results");
+  // Define timeout function
+  const handleTimeout = () => {
+    processAnswer(false, null);
   };
 
-  // Render
-  if (!currentQuestion) {
+  useEffect(() => {
+    handleTimeoutRef.current = handleTimeout;
+  });
+
+  const handleOptionSelect = (idx: number) => {
+    if (selectionState === "selected" || !currentQuestion) return;
+    const correct = idx === currentQuestion.correctAnswerIndex;
+    processAnswer(correct, idx);
+  };
+
+  // Render Loading state
+  if (isLoading || !currentQuestion) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-12 h-12 rounded-full border-4 border-neonCyan border-t-transparent animate-spin mb-4"></div>
@@ -358,6 +481,7 @@ function QuizContent() {
   if (categoryId === "programming") categoryLabel = "SYS.LANG";
   if (categoryId === "logic-algorithms") categoryLabel = "ALG.COMP";
   if (categoryId === "data-analytics") categoryLabel = "DAT.SCALE";
+  if (categoryId === "computer-science-fundamentals") categoryLabel = "SYS.FUND";
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none">
@@ -455,7 +579,7 @@ function QuizContent() {
 
         {/* Answer Options */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {currentQuestion.options.map((option, idx) => {
+          {currentQuestion.options.map((option: string, idx: number) => {
             const letters = ["A", "B", "C", "D"];
 
             // Selection feedback styles

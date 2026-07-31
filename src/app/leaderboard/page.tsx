@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabase";
 
@@ -36,7 +36,7 @@ const categoryTags: Record<string, string> = {
   "computer-science-fundamentals": "SYS.CORE",
 };
 
-export default function LeaderboardPage() {
+function LeaderboardContent() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -56,7 +56,6 @@ export default function LeaderboardPage() {
   };
 
   useEffect(() => {
-    // If user has a fresh result, default the active tab to that category to show their ranking!
     const sessionResult = getUserSessionResult();
     if (sessionResult && sessionResult.category) {
       setActiveCategory(sessionResult.category);
@@ -76,22 +75,18 @@ export default function LeaderboardPage() {
       const sessionCategory = sessionResult?.category || "programming";
 
       try {
-        // Build Supabase query
         let query = supabase.from("leaderboard").select("id, nickname, score, streak, category");
 
         if (activeCategory !== "all") {
           query = query.eq("category", activeCategory);
         }
 
-        // Sort by score descending and take top 10
         const { data, error } = await query.order("score", { ascending: false }).limit(10);
 
         if (error || !data || data.length === 0) {
-          // Fallback path
           throw new Error("Supabase offline or empty");
         }
 
-        // Mapping Database Results
         const finalEntries: LeaderboardEntry[] = (data as Array<{ id: string; nickname: string; score: number; streak: number; category: string }>).map((item) => ({
           id: String(item.id),
           nickname: String(item.nickname || ""),
@@ -101,11 +96,8 @@ export default function LeaderboardPage() {
           highlight: submittedId ? item.id === submittedId : false,
         }));
 
-        // If current user submitted a score, but it isn't highlighted yet (e.g. they didn't get top 10,
-        // or DB didn't finish index update), let's ensure they are shown/highlighted!
         const hasHighlighted = finalEntries.some((e) => e.highlight);
         if (!hasHighlighted && sessionResult && sessionResult.submitted) {
-          // If we are showing the correct category or All
           if (activeCategory === "all" || sessionCategory === activeCategory) {
             const userEntry: LeaderboardEntry = {
               id: submittedId || "user_run",
@@ -119,10 +111,8 @@ export default function LeaderboardPage() {
           }
         }
 
-        // Sort descending
         finalEntries.sort((a, b) => b.score - a.score);
 
-        // Assign Rank Labels
         const rankedBoard = finalEntries.map((entry, idx) => {
           const rankNum = idx + 1;
           const rankStr = rankNum < 10 ? `0${rankNum}` : `${rankNum}`;
@@ -131,19 +121,15 @@ export default function LeaderboardPage() {
 
         setBoard(rankedBoard);
       } catch (err) {
-        // Fallback gracefully to Local Mock Data
         console.warn("Load leaderboard failed, fallback to local:", err);
         setIsOffline(true);
 
-        // Filter mock entries by category if active is not 'all'
         let fallbackList = [...MOCK_LEADERBOARDS];
         if (activeCategory !== "all") {
           fallbackList = fallbackList.filter((e) => e.category === activeCategory);
         }
 
-        // If the user has a local run, inject it at the correct sorted position!
         if (sessionResult) {
-          // If category matches
           if (activeCategory === "all" || sessionCategory === activeCategory) {
             fallbackList.push({
               id: "local_user",
@@ -156,10 +142,8 @@ export default function LeaderboardPage() {
           }
         }
 
-        // Sort
         fallbackList.sort((a, b) => b.score - a.score);
 
-        // Assign ranks
         const rankedFallback = fallbackList.map((entry, idx) => {
           const rankNum = idx + 1;
           const rankStr = rankNum < 10 ? `0${rankNum}` : `${rankNum}`;
@@ -176,21 +160,21 @@ export default function LeaderboardPage() {
   }, [activeCategory]);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none animate-page-fade">
 
       {/* Scoreboard Badge */}
-      <div className="mb-4 inline-flex items-center gap-2 bg-neonViolet/10 border border-neonViolet/30 px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest text-neonViolet uppercase font-mono">
+      <div className="mb-4 inline-flex items-center gap-2 bg-neonViolet/10 border border-neonViolet/30 px-4 py-1.5 rounded-full text-xs font-semibold font-display tracking-widest text-neonViolet uppercase">
         {"GLOBAL_ARCHIVE // TOP_RECORDS"}
       </div>
 
-      <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-3 text-center">
+      <h1 className="text-3xl md:text-5xl font-black font-display tracking-tight mb-3 text-center uppercase">
         HALL OF{" "}
         <span className="text-transparent bg-clip-text bg-gradient-to-r from-neonViolet to-neonCyan drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]">
           CHAMPIONS
         </span>
       </h1>
 
-      <p className="text-textMuted max-w-xl text-center text-sm md:text-base mb-8">
+      <p className="text-textMuted max-w-xl text-center text-sm md:text-base mb-8 leading-relaxed">
         Only the fastest minds make the cut. High performance is permanently etched into our virtual mainframe.
       </p>
 
@@ -200,7 +184,8 @@ export default function LeaderboardPage() {
           <button
             key={sector.id}
             onClick={() => setActiveCategory(sector.id)}
-            className={`px-4 py-2 rounded text-xs font-mono font-bold tracking-widest uppercase transition-all duration-200 border ${
+            aria-label={`Filter sector by ${sector.label}`}
+            className={`px-4 py-2 rounded text-xs font-display font-bold tracking-widest uppercase transition-all duration-200 border focus:outline-none focus:ring-2 focus:ring-neonCyan ${
               activeCategory === sector.id
                 ? "bg-neonCyan/10 border-neonCyan text-neonCyan shadow-[0_0_10px_rgba(34,211,238,0.25)]"
                 : "bg-bgDark/40 border-neonViolet/20 text-textMuted hover:border-neonViolet/60 hover:text-textPrimary"
@@ -213,15 +198,15 @@ export default function LeaderboardPage() {
 
       {/* Network Offline Alert Badge */}
       {isOffline && (
-        <div className="w-full py-3 px-4 rounded mb-6 border border-neonViolet/30 bg-neonViolet/5 text-neonViolet font-mono text-[11px] text-center tracking-wider">
+        <div className="w-full py-3 px-4 rounded mb-6 border border-neonViolet/30 bg-neonViolet/5 text-neonViolet font-display text-[11px] text-center tracking-wider">
           ⚡ MAINFRAME OFFLINE: USING LOCAL SIMULATOR DATABASE ⚡
         </div>
       )}
 
       {/* Styled Esports Main Scoreboard */}
-      <div className="w-full rounded-lg bg-bgDark border-2 border-neonViolet/30 overflow-hidden shadow-[0_0_20px_rgba(168,85,247,0.1)] mb-10">
+      <div className="w-full rounded-lg bg-bgDark border-2 border-neonViolet/30 overflow-hidden shadow-[0_0_20px_rgba(168,85,247,0.1)] mb-10 font-display">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-2 bg-neonViolet/10 px-6 py-4 border-b border-neonViolet/20 text-xs font-mono tracking-widest text-neonCyan font-bold uppercase">
+        <div className="grid grid-cols-12 gap-2 bg-neonViolet/10 px-6 py-4 border-b border-neonViolet/20 text-xs tracking-widest text-neonCyan font-bold uppercase select-none">
           <div className="col-span-2">RANK</div>
           <div className="col-span-5">NICKNAME</div>
           <div className="col-span-3 text-right">STREAK</div>
@@ -233,14 +218,14 @@ export default function LeaderboardPage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <div className="w-8 h-8 rounded-full border-2 border-neonCyan border-t-transparent animate-spin"></div>
-              <span className="text-xs font-mono tracking-widest text-textMuted uppercase">
+              <span className="text-xs tracking-widest text-textMuted uppercase font-semibold">
                 RETRIEVING MAINFRAME ARCHIVES...
               </span>
             </div>
           ) : board.length === 0 ? (
             <div className="text-center py-20">
-              <span className="text-xs font-mono tracking-widest text-textMuted uppercase">
-                NO ENTIRES RECOVERED IN THIS SECTOR
+              <span className="text-xs tracking-widest text-textMuted uppercase font-semibold">
+                NO ENTRIES RECOVERED IN THIS SECTOR
               </span>
             </div>
           ) : (
@@ -254,7 +239,7 @@ export default function LeaderboardPage() {
                 }`}
               >
                 {/* Rank */}
-                <div className={`col-span-2 font-mono font-bold ${entry.highlight ? "text-neonCyan animate-pulse" : "text-neonViolet"}`}>
+                <div className={`col-span-2 font-bold ${entry.highlight ? "text-neonCyan animate-pulse" : "text-neonViolet"}`}>
                   #{entry.rank}
                 </div>
 
@@ -263,19 +248,19 @@ export default function LeaderboardPage() {
                   <span className={entry.highlight ? "text-neonCyan font-black" : "text-textPrimary"}>
                     {entry.nickname}
                   </span>
-                  <span className="hidden sm:inline text-[10px] font-mono tracking-wider bg-bgDark border border-neonViolet/20 px-1.5 py-0.5 rounded text-neonViolet">
+                  <span className="hidden sm:inline text-[9px] tracking-wider bg-bgDark border border-neonViolet/20 px-1.5 py-0.5 rounded text-neonViolet font-bold">
                     {categoryTags[entry.category] || "SYS.CORE"}
                   </span>
                 </div>
 
                 {/* Streak */}
-                <div className="col-span-3 text-right font-mono text-xs flex items-center justify-end gap-1 text-neonViolet">
+                <div className="col-span-3 text-right text-xs flex items-center justify-end gap-1 text-neonViolet font-bold">
                   <span>{entry.streak}</span>
                   <span>🔥</span>
                 </div>
 
                 {/* Final Score */}
-                <div className={`col-span-2 text-right font-mono font-bold ${entry.highlight ? "text-neonCyan" : "text-textPrimary"}`}>
+                <div className={`col-span-2 text-right font-bold ${entry.highlight ? "text-neonCyan animate-pulse" : "text-textPrimary"}`}>
                   {entry.score.toLocaleString()}
                 </div>
               </div>
@@ -287,11 +272,24 @@ export default function LeaderboardPage() {
       {/* Back to Home CTA */}
       <Link
         href="/"
-        className="group relative inline-flex items-center justify-center px-8 py-3.5 text-sm font-bold tracking-widest uppercase transition-all duration-300 rounded-md bg-neonViolet text-textPrimary hover:bg-neonViolet/90 focus:outline-none focus:ring-2 focus:ring-neonCyan shadow-[0_0_12px_rgba(168,85,247,0.4)] hover:shadow-[0_0_22px_rgba(34,211,238,0.7)] border border-transparent hover:border-neonCyan"
+        className="group relative inline-flex items-center justify-center px-8 py-3.5 text-sm font-bold tracking-widest uppercase transition-all duration-300 rounded bg-neonViolet text-textPrimary hover:bg-neonViolet/90 focus:outline-none focus:ring-2 focus:ring-neonCyan shadow-[0_0_12px_rgba(168,85,247,0.4)] hover:shadow-[0_0_22px_rgba(34,211,238,0.7)] border border-transparent hover:border-neonCyan font-display"
       >
-        <span className="absolute inset-0 w-full h-full rounded-md bg-gradient-to-r from-neonViolet to-neonCyan opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-sm"></span>
+        <span className="absolute inset-0 w-full h-full rounded bg-gradient-to-r from-neonViolet to-neonCyan opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-sm"></span>
         BACK TO HOME
       </Link>
     </div>
+  );
+}
+
+export default function LeaderboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-12 h-12 rounded-full border-4 border-neonCyan border-t-transparent animate-spin mb-4"></div>
+        <span className="text-sm font-display tracking-widest text-textMuted uppercase">LOADING LEADERBOARD VECTOR...</span>
+      </div>
+    }>
+      <LeaderboardContent />
+    </Suspense>
   );
 }

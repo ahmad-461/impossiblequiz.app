@@ -39,6 +39,60 @@ const parseCategoryInfo = (id: string) => {
     };
   }
 
+  if (id.startsWith("business_")) {
+    const parts = id.split("_");
+    const subRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const subMapping: Record<string, string> = {
+      marketing: "Marketing",
+      finance: "Finance",
+      accounting: "Accounting",
+      entrepreneurship: "Entrepreneurship",
+      management: "Management",
+      economics: "Economics",
+      "business-strategy": "Business Strategy",
+    };
+
+    const formattedSub = subMapping[subRaw.toLowerCase()] || subRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    return {
+      isExtendedProgramming: true,
+      language: subRaw,
+      difficulty: diffRaw as "easy" | "medium" | "hard" | "impossible",
+      label: "BUS.MGMT",
+      displayName: `Business: ${formattedSub} (${formattedDiff})`
+    };
+  }
+
+  if (id.startsWith("english_")) {
+    const parts = id.split("_");
+    const subRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const subMapping: Record<string, string> = {
+      grammar: "Grammar",
+      vocabulary: "Vocabulary",
+      "synonyms-antonyms": "Synonyms & Antonyms",
+      tenses: "Tenses",
+      "sentence-correction": "Sentence Correction",
+      "idioms-phrases": "Idioms & Phrases",
+      "reading-comprehension": "Reading Comprehension",
+    };
+
+    const formattedSub = subMapping[subRaw.toLowerCase()] || subRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    return {
+      isExtendedProgramming: true,
+      language: subRaw,
+      difficulty: diffRaw as "easy" | "medium" | "hard" | "impossible",
+      label: "ENG.LANG",
+      displayName: `English: ${formattedSub} (${formattedDiff})`
+    };
+  }
+
   const labelMap: Record<string, string> = {
     programming: "SYS.LANG",
     "logic-algorithms": "ALG.COMP",
@@ -62,8 +116,20 @@ function QuizContent() {
   // Selected Category ID
   const categoryId = searchParams.get("category") || "programming";
   const catInfo = parseCategoryInfo(categoryId);
+  const categoryLabel = catInfo.label;
+  const categoryDisplayName = catInfo.displayName;
 
-  // States
+  // Configuration States
+  const [quizStarted, setQuizStarted] = useState<boolean>(false);
+  const [aiTwinEnabled, setAiTwinEnabled] = useState<boolean>(false);
+
+  // Twin States
+  const [twinScore, setTwinScore] = useState<number>(0);
+  const [twinStreak, setTwinStreak] = useState<number>(0);
+  const [twinPeakStreak, setTwinPeakStreak] = useState<number>(0);
+  const [twinStatus, setTwinStatus] = useState<'thinking' | 'answered_correct' | 'answered_incorrect'>('thinking');
+
+  // Player States
   const [lives, setLives] = useState<number>(3);
   const [score, setScore] = useState<number>(0);
   const [streak, setStreak] = useState<number>(0);
@@ -96,6 +162,22 @@ function QuizContent() {
   // References for keeping state updated in callbacks
   const handleTimeoutRef = useRef<(() => void) | null>(null);
 
+  // AI Twin references to prevent stale closures
+  const twinTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const twinStreakRef = useRef(twinStreak);
+  const twinScoreRef = useRef(twinScore);
+  const twinPeakStreakRef = useRef(twinPeakStreak);
+  const currentDifficultyRef = useRef(currentDifficulty);
+  const twinStatusRef = useRef(twinStatus);
+
+  useEffect(() => {
+    twinStreakRef.current = twinStreak;
+    twinScoreRef.current = twinScore;
+    twinPeakStreakRef.current = twinPeakStreak;
+    currentDifficultyRef.current = currentDifficulty;
+    twinStatusRef.current = twinStatus;
+  }, [twinStreak, twinScore, twinPeakStreak, currentDifficulty, twinStatus]);
+
   // Helper to save session state to sessionStorage
   const saveSessionState = (
     currentLives: number,
@@ -108,7 +190,11 @@ function QuizContent() {
     hist: { correct: boolean; difficulty: "easy" | "medium" | "hard" | "impossible" }[],
     askedTexts: string[],
     askedIds: string[],
-    currQuestion: Question | null
+    currQuestion: Question | null,
+    twinEnabledVal?: boolean,
+    tScore?: number,
+    tStreak?: number,
+    tPeakStreak?: number
   ) => {
     try {
       const stateObj = {
@@ -124,8 +210,14 @@ function QuizContent() {
         alreadyAskedTexts: askedTexts,
         alreadyAskedIds: askedIds,
         currentQuestion: currQuestion,
+        // Carry through the start flags & AI Twin details
+        quizStarted: true,
+        aiTwinEnabled: twinEnabledVal ?? aiTwinEnabled,
+        twinScore: tScore ?? twinScoreRef.current,
+        twinStreak: tStreak ?? twinStreakRef.current,
+        twinPeakStreak: tPeakStreak ?? twinPeakStreakRef.current,
       };
-      const sessionKey = categoryId.startsWith("programming_")
+      const sessionKey = categoryId.startsWith("programming_") || categoryId.startsWith("business_") || categoryId.startsWith("english_")
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
       sessionStorage.setItem(sessionKey, JSON.stringify(stateObj));
@@ -137,7 +229,7 @@ function QuizContent() {
   // Helper to clear session state from sessionStorage
   const clearSessionState = () => {
     try {
-      const sessionKey = categoryId.startsWith("programming_")
+      const sessionKey = categoryId.startsWith("programming_") || categoryId.startsWith("business_") || categoryId.startsWith("english_")
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
       sessionStorage.removeItem(sessionKey);
@@ -191,10 +283,17 @@ function QuizContent() {
     finalPeakStreak: number,
     outcome: "boss_victory" | "pool_victory" | "defeat" | "boss_defeat",
     correct: number,
-    total: number
+    total: number,
+    tEnabled?: boolean,
+    tScore?: number,
+    tPeakStreak?: number
   ) => {
     clearSessionState();
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const isTwinActive = tEnabled ?? aiTwinEnabled;
+    const finalTwinScore = tScore ?? twinScoreRef.current;
+    const finalTwinPeakStreak = tPeakStreak ?? twinPeakStreakRef.current;
+
     const resultState = {
       score: finalScore,
       peakStreak: finalPeakStreak,
@@ -203,9 +302,18 @@ function QuizContent() {
       accuracy,
       correct,
       total,
+      // Pass AI Twin properties
+      aiTwinEnabled: isTwinActive,
+      twinScore: finalTwinScore,
+      twinPeakStreak: finalTwinPeakStreak,
     };
     sessionStorage.setItem("impossible_quiz_result", JSON.stringify(resultState));
-    router.push("/results");
+
+    const twinQuery = isTwinActive
+      ? `&aiTwin=true&twinScore=${finalTwinScore}&twinStreak=${finalTwinPeakStreak}`
+      : "";
+
+    router.push(`/results?score=${finalScore}&streak=${finalPeakStreak}&category=${categoryId}&outcome=${outcome}${twinQuery}`);
   };
 
   // Helper to trigger optimistic pre-fetching for the subsequent question
@@ -275,12 +383,107 @@ function QuizContent() {
     }
   };
 
+  // AI Twin Simulated Resolution Function
+  const resolveTwinAnswer = () => {
+    if (twinStatusRef.current !== "thinking") return;
+
+    const diff = currentDifficultyRef.current;
+    let correctProb = 85; // Easy
+    if (diff === "medium") correctProb = 65;
+    if (diff === "hard") correctProb = 45;
+    if (diff === "impossible") correctProb = 25;
+
+    const roll = Math.random() * 100;
+    const isTwinCorrect = roll < correctProb;
+
+    let nextTwinStreak = twinStreakRef.current;
+    let nextTwinScore = twinScoreRef.current;
+    let nextTwinPeakStreak = twinPeakStreakRef.current;
+
+    if (isTwinCorrect) {
+      nextTwinStreak += 1;
+      nextTwinPeakStreak = Math.max(nextTwinPeakStreak, nextTwinStreak);
+
+      let basePoints = 100;
+      if (diff === "medium") basePoints = 200;
+      if (diff === "hard") basePoints = 300;
+      if (diff === "impossible") basePoints = 500;
+
+      const scoredPoints = Math.round(basePoints * (1 + nextTwinStreak * 0.1));
+      nextTwinScore += scoredPoints;
+
+      setTwinStreak(nextTwinStreak);
+      setTwinScore(nextTwinScore);
+      setTwinPeakStreak(nextTwinPeakStreak);
+      setTwinStatus("answered_correct");
+    } else {
+      nextTwinStreak = 0;
+      setTwinStreak(0);
+      setTwinStatus("answered_incorrect");
+    }
+
+    // Set Refs Synchronously for any consecutive reads in processAnswer
+    twinStreakRef.current = nextTwinStreak;
+    twinScoreRef.current = nextTwinScore;
+    twinPeakStreakRef.current = nextTwinPeakStreak;
+    twinStatusRef.current = isTwinCorrect ? "answered_correct" : "answered_incorrect";
+
+    // Save persistent state with updated Twin properties
+    saveSessionState(
+      lives,
+      score,
+      streak,
+      peakStreak,
+      totalQuestionsAnswered,
+      totalCorrectAnswers,
+      diff,
+      history,
+      alreadyAskedTexts,
+      alreadyAskedIds,
+      currentQuestion,
+      aiTwinEnabled,
+      nextTwinScore,
+      nextTwinStreak,
+      nextTwinPeakStreak
+    );
+  };
+
+  // AI Twin Simulated Timer Effect
+  useEffect(() => {
+    // Only run if twin enabled, quiz has started, not loading, has question, and player has not already selected
+    if (!aiTwinEnabled || !quizStarted || isLoading || !currentQuestion || selectionState === "selected") {
+      if (twinTimerRef.current) {
+        clearTimeout(twinTimerRef.current);
+        twinTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Reset twin status back to thinking for the new question
+    setTwinStatus("thinking");
+    twinStatusRef.current = "thinking";
+
+    const delay = Math.floor(Math.random() * (8000 - 2000 + 1)) + 2000; // 2s to 8s
+
+    twinTimerRef.current = setTimeout(() => {
+      resolveTwinAnswer();
+    }, delay);
+
+    return () => {
+      if (twinTimerRef.current) {
+        clearTimeout(twinTimerRef.current);
+        twinTimerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion, aiTwinEnabled, quizStarted, isLoading, selectionState]);
+
   // Initialize Quiz Session once on mount (or if category changes)
   useEffect(() => {
     const initializeQuiz = async () => {
       setIsLoading(true);
 
-      const sessionKey = categoryId.startsWith("programming_")
+      const sessionKey = categoryId.startsWith("programming_") || categoryId.startsWith("business_") || categoryId.startsWith("english_")
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
 
@@ -310,6 +513,16 @@ function QuizContent() {
         setAlreadyAskedTexts(restored.alreadyAskedTexts);
         setAlreadyAskedIds(restored.alreadyAskedIds);
         setCurrentQuestion(restored.currentQuestion);
+
+        // Restore Twin details if present
+        setAiTwinEnabled(restored.aiTwinEnabled || false);
+        setTwinScore(restored.twinScore || 0);
+        setTwinStreak(restored.twinStreak || 0);
+        setTwinPeakStreak(restored.twinPeakStreak || 0);
+        setTwinStatus("thinking");
+
+        // Force started state
+        setQuizStarted(true);
 
         // Pre-clear old next-question prefetch slots
         setNextQuestion(null);
@@ -342,6 +555,12 @@ function QuizContent() {
       setIsCorrectSelection(null);
       setTimer(initialTimer);
 
+      // Reset Twin Details
+      setTwinScore(0);
+      setTwinStreak(0);
+      setTwinPeakStreak(0);
+      setTwinStatus("thinking");
+
       // Clear pre-fetches
       setNextQuestion(null);
       setNextQuestionDifficulty(null);
@@ -357,13 +576,13 @@ function QuizContent() {
         setAlreadyAskedTexts(askedTexts);
         setAlreadyAskedIds(askedIds);
 
-        // Save session immediately
-        saveSessionState(startingLives, 0, 0, 0, 0, 0, startingDiff, [], askedTexts, askedIds, firstQuestion);
+        // Save session immediately with standard values
+        saveSessionState(startingLives, 0, 0, 0, 0, 0, startingDiff, [], askedTexts, askedIds, firstQuestion, false, 0, 0, 0);
 
         // Prefetch the next question
         triggerPrefetch(firstQuestion, [], askedTexts, askedIds);
       } else {
-        finishQuiz(0, 0, "defeat", 0, 0);
+        finishQuiz(0, 0, "defeat", 0, 0, false, 0, 0);
       }
       setIsLoading(false);
     };
@@ -378,7 +597,7 @@ function QuizContent() {
 
   // Handle countdown Timer
   useEffect(() => {
-    if (selectionState === "selected" || !currentQuestion || isLoading) {
+    if (!quizStarted || selectionState === "selected" || !currentQuestion || isLoading) {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       return;
     }
@@ -403,7 +622,7 @@ function QuizContent() {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [currentQuestion, selectionState, isLoading, currentDifficulty]);
+  }, [quizStarted, currentQuestion, selectionState, isLoading, currentDifficulty]);
 
   // Unified logic to process an answer (either select option or timeout)
   const processAnswer = async (correct: boolean, chosenIdx: number | null) => {
@@ -445,6 +664,22 @@ function QuizContent() {
       setStreak(0);
       nextLives -= 1;
       setLives(nextLives);
+    }
+
+    // Resolve Twin's answer immediately if they are still thinking!
+    let nextTwinScore = twinScoreRef.current;
+    let nextTwinPeakStreak = twinPeakStreakRef.current;
+
+    if (aiTwinEnabled) {
+      if (twinStatusRef.current === "thinking") {
+        if (twinTimerRef.current) {
+          clearTimeout(twinTimerRef.current);
+          twinTimerRef.current = null;
+        }
+        resolveTwinAnswer();
+      }
+      nextTwinScore = twinScoreRef.current;
+      nextTwinPeakStreak = twinPeakStreakRef.current;
     }
 
     // Append to actual history
@@ -503,12 +738,30 @@ function QuizContent() {
     setTimeout(async () => {
       if (isGameOver) {
         const finalOutcome = currentQuestion.isBossRound ? "boss_defeat" : "defeat";
-        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), finalOutcome, nextCorrect, totalQuestionsAnswered + 1);
+        finishQuiz(
+          nextScore,
+          Math.max(peakStreak, nextStreak),
+          finalOutcome,
+          nextCorrect,
+          totalQuestionsAnswered + 1,
+          aiTwinEnabled,
+          nextTwinScore,
+          nextTwinPeakStreak
+        );
         return;
       }
 
       if (isBossVictory) {
-        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "boss_victory", nextCorrect, totalQuestionsAnswered + 1);
+        finishQuiz(
+          nextScore,
+          Math.max(peakStreak, nextStreak),
+          "boss_victory",
+          nextCorrect,
+          totalQuestionsAnswered + 1,
+          aiTwinEnabled,
+          nextTwinScore,
+          nextTwinPeakStreak
+        );
         return;
       }
 
@@ -548,7 +801,16 @@ function QuizContent() {
       }
 
       if (!nextActiveQuestion) {
-        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "pool_victory", nextCorrect, totalQuestionsAnswered + 1);
+        finishQuiz(
+          nextScore,
+          Math.max(peakStreak, nextStreak),
+          "pool_victory",
+          nextCorrect,
+          totalQuestionsAnswered + 1,
+          aiTwinEnabled,
+          nextTwinScore,
+          nextTwinPeakStreak
+        );
         return;
       }
 
@@ -564,7 +826,11 @@ function QuizContent() {
         updatedHistory,
         currentAskedTexts,
         currentAskedIds,
-        nextActiveQuestion
+        nextActiveQuestion,
+        aiTwinEnabled,
+        nextTwinScore,
+        twinStreakRef.current,
+        nextTwinPeakStreak
       );
 
       // Reset state for the next question
@@ -599,6 +865,133 @@ function QuizContent() {
     processAnswer(correct, idx);
   };
 
+  // Pre-Start Setup Screen
+  if (!quizStarted) {
+    const isImpossible = currentDifficulty === "impossible";
+    const diffLabel = currentDifficulty.toUpperCase();
+
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 md:py-12 max-w-xl mx-auto w-full select-none animate-page-fade">
+        <div className="w-full p-6 md:p-8 rounded-lg bg-bgDark border-2 border-neonViolet/30 shadow-[0_0_15px_rgba(168,85,247,0.1)] relative overflow-hidden">
+          {/* Neon corner lines */}
+          <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-neonCyan"></div>
+          <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-neonCyan"></div>
+
+          <div className="mb-6 inline-flex items-center gap-2 bg-neonViolet/10 border border-neonViolet/30 px-3 py-1 rounded-full text-[10px] font-black tracking-widest text-neonViolet uppercase font-display">
+            PORTAL_AUTHORIZATION // SECURE_LINE
+          </div>
+
+          <h1 className="text-2xl md:text-3xl font-black font-display tracking-tight mb-2 uppercase">
+            CHAMBER{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neonViolet to-neonCyan drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]">
+              INITIALIZATION
+            </span>
+          </h1>
+
+          <div className="border-t border-b border-neonViolet/20 py-4 my-4 font-mono text-xs text-textMuted flex flex-col gap-2">
+            <div>
+              <span className="text-neonCyan font-bold">SECTOR:</span> {categoryDisplayName}
+            </div>
+            <div>
+              <span className="text-neonCyan font-bold">SECURITY TIER:</span>{" "}
+              <span className={isImpossible ? "text-neonViolet font-black animate-pulse" : "text-textPrimary"}>
+                {diffLabel}
+              </span>
+            </div>
+            <div>
+              <span className="text-neonCyan font-bold">SHIELD AUTHORIZATION:</span>{" "}
+              <span className="text-textPrimary">
+                {isImpossible ? "1 LIFE (SINGLE-LIFE)" : "3 LIVES (SHIELDS)"}
+              </span>
+            </div>
+            <div>
+              <span className="text-neonCyan font-bold">COUNTDOWN LIMIT:</span>{" "}
+              <span className="text-textPrimary">{isImpossible ? "15s BRUTAL" : "30s STANDARD"}</span>
+            </div>
+          </div>
+
+          {/* AI Twin Mode Toggle Panel */}
+          <div className="mt-6 p-4 rounded border border-neonViolet/20 bg-bgDark/40 hover:border-neonCyan/40 transition-colors duration-200">
+            <label className="flex items-start gap-4 cursor-pointer group">
+              <div className="relative flex items-center h-5 mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={aiTwinEnabled}
+                  onChange={(e) => setAiTwinEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-5 h-5 border-2 border-neonViolet/40 peer-checked:border-neonCyan bg-bgDark rounded flex items-center justify-center transition-all duration-200 peer-focus:ring-2 peer-focus:ring-neonCyan">
+                  <div className={`w-2.5 h-2.5 bg-neonCyan rounded-sm transition-transform duration-200 ${aiTwinEnabled ? "scale-100" : "scale-0"}`}></div>
+                </div>
+              </div>
+              <div className="flex-1 font-display">
+                <span className="text-sm font-black text-textPrimary group-hover:text-neonCyan transition-colors duration-200 uppercase tracking-wider block">
+                  Enable AI Twin Mode
+                </span>
+                <span className="text-xs text-textMuted leading-relaxed block mt-1 font-sans">
+                  Race a simulated AI opponent through the same questions, live.
+                </span>
+              </div>
+            </label>
+
+            {aiTwinEnabled && (
+              <div className="mt-4 pt-4 border-t border-neonViolet/10 font-mono text-[10px] text-neonCyan/80 flex flex-col gap-1.5 animate-page-fade">
+                <div className="flex justify-between">
+                  <span>SYSTEM_TARGET:</span>
+                  <span className="font-bold text-textPrimary">JULES_TWIN_V1</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>PROBABILITY_MATRIX:</span>
+                  <span className="font-bold text-textPrimary">
+                    EASY (85%) // MED (65%) // HARD (45%) // IMP (25%)
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>THINKING_LATENCY:</span>
+                  <span className="font-bold text-textPrimary">2s - 8s (RANDOMIZED)</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => {
+              setQuizStarted(true);
+              // Save state with current AI Twin selection
+              saveSessionState(
+                lives,
+                score,
+                streak,
+                peakStreak,
+                totalQuestionsAnswered,
+                totalCorrectAnswers,
+                currentDifficulty,
+                history,
+                alreadyAskedTexts,
+                alreadyAskedIds,
+                currentQuestion,
+                aiTwinEnabled,
+                0,
+                0,
+                0
+              );
+            }}
+            className="w-full mt-6 py-4 rounded bg-neonViolet text-textPrimary hover:bg-neonViolet/90 font-display font-black tracking-widest text-sm uppercase border border-transparent hover:border-neonCyan hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonCyan transition-all duration-300"
+          >
+            INITIALIZE SYSTEM PORTAL →
+          </button>
+        </div>
+
+        <Link
+          href="/categories"
+          className="mt-6 text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
+        >
+          ← ABANDON PORTAL (CATEGORIES)
+        </Link>
+      </div>
+    );
+  }
+
   // Render Loading state
   if (isLoading || !currentQuestion) {
     return (
@@ -607,10 +1000,6 @@ function QuizContent() {
       </div>
     );
   }
-
-  // Set category label
-  const categoryLabel = catInfo.label;
-  const categoryDisplayName = catInfo.displayName;
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 md:py-12 max-w-4xl mx-auto w-full select-none animate-page-fade">
@@ -682,6 +1071,63 @@ function QuizContent() {
           </div>
         </div>
       </div>
+
+      {/* AI Twin Parallel Stats Panel */}
+      {aiTwinEnabled && (
+        <div className="w-full flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 p-4 rounded border border-neonViolet/30 bg-bgDark/60 shadow-[0_0_10px_rgba(168,85,247,0.05)] font-display text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-lg animate-pulse">🤖</span>
+            <div className="flex flex-col">
+              <span className="text-[10px] text-textMuted uppercase tracking-widest">AI OPPONENT</span>
+              <span className="font-black text-neonViolet uppercase tracking-wider">JULES_TWIN_V1</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6 justify-end w-full sm:w-auto">
+            {/* Status */}
+            <div className="flex flex-col items-start sm:items-end">
+              <span className="text-[10px] text-textMuted uppercase tracking-widest mb-0.5">STATUS</span>
+              {twinStatus === "thinking" ? (
+                <span className="text-neonCyan font-black animate-pulse flex items-center gap-1">
+                  THINKING
+                  <span className="inline-flex gap-0.5">
+                    <span className="animate-bounce delay-100">.</span>
+                    <span className="animate-bounce delay-200">.</span>
+                    <span className="animate-bounce delay-300">.</span>
+                  </span>
+                </span>
+              ) : twinStatus === "answered_correct" ? (
+                <span className="text-neonCyan font-black flex items-center gap-1">
+                  🛡️ RESOLVED: CORRECT
+                </span>
+              ) : (
+                <span className="text-neonViolet font-black flex items-center gap-1">
+                  ⚠️ RESOLVED: INCORRECT
+                </span>
+              )}
+            </div>
+
+            {/* Streak */}
+            <div className="flex flex-col items-start sm:items-end">
+              <span className="text-[10px] text-textMuted uppercase tracking-widest mb-0.5">STREAK</span>
+              <div className="flex items-center gap-1">
+                <span className={`font-black text-neonViolet ${twinStreak > 0 ? "animate-streak-pulse" : ""}`}>
+                  {twinStreak}
+                </span>
+                <span className={twinStreak > 0 ? "scale-110" : "opacity-35"}>🔥</span>
+              </div>
+            </div>
+
+            {/* Score */}
+            <div className="text-left sm:text-right">
+              <span className="text-[10px] text-textMuted uppercase tracking-widest block mb-0.5">SCORE</span>
+              <span className="font-black text-neonCyan">
+                {twinScore.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Timer Bar */}
       <div className="w-full h-1 bg-bgDark border border-neonViolet/20 rounded-full mb-6 overflow-hidden">

@@ -17,6 +17,10 @@ interface QuizResult {
   submitted?: boolean;
   submittedId?: string;
   nickname?: string;
+  // AI Twin Fields
+  aiTwinEnabled?: boolean;
+  twinScore?: number;
+  twinPeakStreak?: number;
 }
 
 const KNOWN_CATEGORIES = [
@@ -141,6 +145,11 @@ export default function ResultsClient() {
     const pCategory = searchParams.get("category");
     const pOutcome = searchParams.get("outcome");
 
+    // AI Twin fields from URL parameters for seamless public link sharing
+    const pAiTwin = searchParams.get("aiTwin");
+    const pTwinScore = searchParams.get("twinScore");
+    const pTwinStreak = searchParams.get("twinStreak");
+
     if (!pScore && !pCategory && !pOutcome) {
       return null;
     }
@@ -172,6 +181,15 @@ export default function ResultsClient() {
       outcome = pOutcome as QuizResult["outcome"];
     }
 
+    // Sanitize AI Twin Score and Streak
+    let twinScore = parseInt(pTwinScore || "0", 10);
+    if (isNaN(twinScore) || twinScore < 0) twinScore = 0;
+    if (twinScore > 1000000) twinScore = 1000000;
+
+    let twinPeakStreak = parseInt(pTwinStreak || "0", 10);
+    if (isNaN(twinPeakStreak) || twinPeakStreak < 0) twinPeakStreak = 0;
+    if (twinPeakStreak > 100) twinPeakStreak = 100;
+
     return {
       score,
       peakStreak,
@@ -180,6 +198,9 @@ export default function ResultsClient() {
       accuracy: 100, // standard display placeholder for shared links
       correct: 10,
       total: 10,
+      aiTwinEnabled: pAiTwin === "true",
+      twinScore,
+      twinPeakStreak,
     };
   }, [searchParams]);
 
@@ -192,6 +213,9 @@ export default function ResultsClient() {
     accuracy: 0,
     correct: 0,
     total: 0,
+    aiTwinEnabled: false,
+    twinScore: 0,
+    twinPeakStreak: 0,
   };
 
   const isVictory = activeResult.outcome === "boss_victory" || activeResult.outcome === "pool_victory";
@@ -298,9 +322,30 @@ export default function ResultsClient() {
         ? "⚠️ SO CLOSE (Terminated at Boss)"
         : "🛡️ SIMULATION FAILED";
 
-    const shareUrl = typeof window !== "undefined"
-      ? `${window.location.origin}/results?score=${activeResult.score}&streak=${activeResult.peakStreak}&category=${activeResult.category}&outcome=${activeResult.outcome}`
+    const isTwin = activeResult.aiTwinEnabled;
+    const twinParam = isTwin
+      ? `&aiTwin=true&twinScore=${activeResult.twinScore}&twinStreak=${activeResult.twinPeakStreak}`
       : "";
+
+    const shareUrl = typeof window !== "undefined"
+      ? `${window.location.origin}/results?score=${activeResult.score}&streak=${activeResult.peakStreak}&category=${activeResult.category}&outcome=${activeResult.outcome}${twinParam}`
+      : "";
+
+    let twinBlock = "";
+    if (isTwin) {
+      const outcomeLabel = activeResult.score > (activeResult.twinScore || 0)
+        ? "YOU WIN!"
+        : activeResult.score < (activeResult.twinScore || 0)
+        ? "AI WINS!"
+        : "TIED!";
+
+      twinBlock = `
+AI Opponent: JULES_TWIN_V1
+AI Final Score: ${(activeResult.twinScore || 0).toLocaleString()}
+AI Peak Streak: ${activeResult.twinPeakStreak || 0}
+Head-to-Head Outcome: ${outcomeLabel}
+`;
+    }
 
     const text = `🏆 THE IMPOSSIBLE QUIZ GENERATOR 🏆
 ---------------------------------
@@ -309,8 +354,7 @@ Outcome: ${outcomeStr}
 Final Score: ${activeResult.score.toLocaleString()}
 Peak Streak: ${activeResult.peakStreak}
 Accuracy: ${activeResult.accuracy}%
-Questions: ${activeResult.correct}/${activeResult.total}
----------------------------------
+Questions: ${activeResult.correct}/${activeResult.total}${twinBlock}---------------------------------
 Can you survive the AI mainframe? Try now!
 Link: ${shareUrl}`;
 
@@ -439,6 +483,68 @@ Link: ${shareUrl}`;
             </span>
           </div>
         </div>
+
+        {/* Head-to-Head Comparison Card (AI Twin Mode only) */}
+        {activeResult.aiTwinEnabled && (
+          <div className="mt-8 pt-6 border-t border-neonViolet/20">
+            <div className="text-center mb-6">
+              <span className="text-[10px] font-display tracking-[0.2em] text-neonCyan uppercase font-black">
+                HEAD-TO-HEAD COMPARISON ANALYSIS
+              </span>
+              <h4 className={`text-2xl font-black font-display tracking-widest mt-1 ${
+                activeResult.score > (activeResult.twinScore || 0)
+                  ? "text-neonCyan animate-pulse"
+                  : activeResult.score < (activeResult.twinScore || 0)
+                  ? "text-neonViolet"
+                  : "text-textPrimary"
+              }`}>
+                {activeResult.score > (activeResult.twinScore || 0)
+                  ? "// YOU SURVIVED & DEFEATED THE TWIN //"
+                  : activeResult.score < (activeResult.twinScore || 0)
+                  ? "// JULES_TWIN TERMINATED PLAYER //"
+                  : "// SYNCHRONIZED ARCHIVE TIE //"}
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 select-none font-display text-sm">
+              {/* Player Scorecard */}
+              <div className="p-4 rounded border-2 border-neonCyan bg-bgDark/40 flex flex-col gap-2">
+                <div className="flex justify-between items-center pb-2 border-b border-neonCyan/20">
+                  <span className="text-neonCyan font-black">PLAYER_SYS (YOU)</span>
+                  <span className="text-[10px] text-neonCyan bg-neonCyan/10 px-2 py-0.5 rounded border border-neonCyan/25">
+                    HUMAN
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-textMuted text-xs uppercase">FINAL SCORE:</span>
+                  <span className="font-black text-neonCyan">{activeResult.score.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-textMuted text-xs uppercase">PEAK STREAK:</span>
+                  <span className="font-black text-neonCyan">{activeResult.peakStreak} 🔥</span>
+                </div>
+              </div>
+
+              {/* AI Twin Scorecard */}
+              <div className="p-4 rounded border-2 border-neonViolet bg-bgDark/40 flex flex-col gap-2">
+                <div className="flex justify-between items-center pb-2 border-b border-neonViolet/20">
+                  <span className="text-neonViolet font-black">JULES_TWIN_V1</span>
+                  <span className="text-[10px] text-neonViolet bg-neonViolet/10 px-2 py-0.5 rounded border border-neonViolet/25">
+                    SIM_AI
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-textMuted text-xs uppercase">FINAL SCORE:</span>
+                  <span className="font-black text-neonViolet">{(activeResult.twinScore || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-textMuted text-xs uppercase">PEAK STREAK:</span>
+                  <span className="font-black text-neonViolet">{activeResult.twinPeakStreak || 0} 🔥</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Share / Action Buttons */}

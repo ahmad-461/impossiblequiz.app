@@ -14,7 +14,7 @@ export const escapeRoomQuestions: EscapeRoomQuestion[] = [
     roomNumber: 1,
     narrative: "You wake up inside a dim terminal console. The primary sector's initialization vector is locked. Override the variable buffer to proceed.",
     questionText: "In JavaScript, which keyword is used to declare a block-scoped variable that cannot be reassigned?",
-    options: ["var", "let", "const", "define"],
+    options: ["var", "let", "const", "define", "sudo poweroff"],
     correctAnswerIndex: 2,
     difficulty: "easy",
   },

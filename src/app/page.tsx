@@ -118,6 +118,10 @@ export default function Home() {
   const [showBreachToast, setShowBreachToast] = useState(false);
   const [isGlitching, setIsGlitching] = useState(false);
 
+  // Daily Challenge States
+  const [dailyCategory, setDailyCategory] = useState<string>("Loading...");
+  const [countdownStr, setCountdownStr] = useState<string>("00:00:00");
+
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const glitchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -129,7 +133,53 @@ export default function Home() {
       "color: #22d3ee; font-weight: bold; font-family: monospace; font-size: 12px; padding-top: 10px;"
     );
 
+    // Fetch today's Daily Challenge category
+    const fetchDailyInfo = async () => {
+      try {
+        const res = await fetch("/api/daily-challenge");
+        if (res.ok) {
+          const data = await res.json();
+          setDailyCategory(data.categoryName || "Unknown Sector");
+        }
+      } catch (err) {
+        console.error("Error loading daily info on home page:", err);
+      }
+    };
+    fetchDailyInfo();
+
+    // Setup Countdown to UTC Midnight
+    const updateCountdown = () => {
+      const now = new Date();
+      const nextMidnight = Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1
+      );
+      const msLeft = nextMidnight - now.getTime();
+
+      if (msLeft <= 0) {
+        setCountdownStr("00:00:00");
+        fetchDailyInfo(); // refresh challenge on day flip
+        return;
+      }
+
+      const totalSecs = Math.floor(msLeft / 1000);
+      const hours = Math.floor(totalSecs / 3600);
+      const minutes = Math.floor((totalSecs % 3600) / 60);
+      const seconds = totalSecs % 60;
+
+      const hh = String(hours).padStart(2, "0");
+      const mm = String(minutes).padStart(2, "0");
+      const ss = String(seconds).padStart(2, "0");
+
+      setCountdownStr(`${hh}:${mm}:${ss}`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
     return () => {
+      clearInterval(interval);
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (glitchTimerRef.current) clearTimeout(glitchTimerRef.current);
     };
@@ -258,8 +308,46 @@ export default function Home() {
               </button>
             </ScrollReveal>
 
+            {/* Daily Challenge Promo Section */}
+            <ScrollReveal className="mt-8 w-full max-w-xl">
+              <div className="w-full p-6 rounded-lg bg-bgDark border-2 border-neonCyan/35 relative overflow-hidden shadow-[0_0_18px_rgba(34,211,238,0.15)] text-left">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-neonCyan/5 transform rotate-45 translate-x-12 -translate-y-12 border-b border-l border-neonCyan/10"></div>
+
+                <div className="flex justify-between items-start mb-3">
+                  <span className="inline-flex items-center gap-1 bg-neonCyan/10 border border-neonCyan/30 px-3 py-1 rounded-full text-[10px] font-bold font-display tracking-widest uppercase text-neonCyan animate-pulse">
+                    ⚡ NEW DAILY RUN ACTIVE ⚡
+                  </span>
+                  <span className="text-[10px] font-display font-black tracking-widest text-textMuted uppercase">
+                    Resets in: {countdownStr}
+                  </span>
+                </div>
+
+                <h3 className="text-xl font-black font-display text-textPrimary uppercase mb-1">
+                  TODAY&apos;S CHALLENGE: {dailyCategory}
+                </h3>
+                <p className="text-xs text-textMuted mb-4 leading-relaxed max-w-md">
+                  Complete 5 exclusive daily questions to secure your rank on the dedicated daily leaderboard. One official try per 24h.
+                </p>
+
+                <div className="flex items-center gap-4">
+                  <Link
+                    href="/quiz/daily"
+                    className="inline-flex items-center justify-center px-5 py-2.5 text-xs font-black font-display tracking-widest uppercase transition-all duration-300 rounded bg-neonCyan text-bgDark hover:bg-neonCyan/90 focus:outline-none hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] border border-transparent"
+                  >
+                    ENTER DAILY ARENA →
+                  </Link>
+                  <Link
+                    href="/leaderboard?category=daily_challenge"
+                    className="text-[10px] font-bold font-display tracking-widest text-textMuted hover:text-neonCyan transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonCyan/50 pb-0.5"
+                  >
+                    DAILY LEADERBOARD
+                  </Link>
+                </div>
+              </div>
+            </ScrollReveal>
+
             {/* Futuristic status items */}
-            <ScrollReveal className="mt-12 grid grid-cols-3 gap-8 max-w-lg border-t border-neonViolet/10 pt-8 w-full">
+            <ScrollReveal className="mt-8 grid grid-cols-3 gap-8 max-w-lg border-t border-neonViolet/10 pt-8 w-full">
               <div>
                 <div className="text-xl md:text-2xl font-black text-neonCyan font-display">04</div>
                 <div className="text-[9px] uppercase tracking-widest text-textMuted mt-1 font-semibold">Sectors Available</div>

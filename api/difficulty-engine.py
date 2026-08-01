@@ -21,7 +21,9 @@ class handler(BaseHTTPRequestHandler):
             last_correct = last_item.get('correct', False)
             last_diff = last_item.get('difficulty', 'easy')
 
-            if not last_correct:
+            if last_diff == 'impossible':
+                next_difficulty = 'impossible'
+            elif not last_correct:
                 # Demotion
                 if last_diff == 'hard':
                     next_difficulty = 'medium'

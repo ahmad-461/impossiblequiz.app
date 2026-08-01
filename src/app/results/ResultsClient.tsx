@@ -467,7 +467,11 @@ Link: ${shareUrl}`;
       <div className="flex flex-col sm:flex-row items-center gap-6 w-full justify-center">
         {/* Play Again */}
         <Link
-          href="/categories"
+          href={
+            activeResult.category.startsWith("programming_")
+              ? `/categories/programming/${activeResult.category.split("_")[1] || "python"}/difficulty`
+              : "/categories"
+          }
           className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet font-display"
         >
           PLAY AGAIN

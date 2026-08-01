@@ -72,7 +72,7 @@ export default function CategoriesPage() {
       </p>
 
       {/* Categories Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-6">
         {categories.map((cat) => (
           <Link
             key={cat.id}
@@ -109,6 +109,51 @@ export default function CategoriesPage() {
             </div>
           </Link>
         ))}
+      </div>
+
+      {/* 5. HARDCORE MODE: ESCAPE ROOM */}
+      <div className="w-full mb-12">
+        <Link
+          href="/escape-room"
+          aria-label="Enter Sector: Code Escape Room. Description: 8 linear firewalled rooms under an overall 5-minute countdown."
+          className="group relative flex flex-col md:flex-row justify-between items-center p-6 rounded-lg bg-bgDark border-2 border-red-500/20 hover:border-red-500 transition-all duration-300 shadow-[0_0_15px_rgba(239,68,68,0.03)] hover:shadow-[0_0_20px_rgba(239,68,68,0.25)] overflow-hidden focus:outline-none focus:ring-2 focus:ring-red-500 w-full gap-6 text-left"
+        >
+          {/* Background absolute subtle neon line */}
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>
+
+          <div className="flex-1">
+            <div className="flex justify-between items-center mb-3">
+              <span
+                style={{ color: "#ef4444" }}
+                className="flex items-center gap-1.5 font-bold font-display text-[10px] tracking-widest uppercase"
+              >
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                CRITICAL INFILTRATION VECTOR
+              </span>
+              <span
+                style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.25)", backgroundColor: "rgba(239, 68, 68, 0.1)" }}
+                className="text-xs font-display tracking-widest border px-2.5 py-0.5 rounded"
+              >
+                HARDCORE.SEC
+              </span>
+            </div>
+
+            <h3 className="text-xl font-bold font-display tracking-wide text-textPrimary group-hover:text-red-500 transition-colors duration-300 mb-2 uppercase">
+              CODE ESCAPE ROOM // CORRUPTED SYSTEM
+            </h3>
+
+            <p className="text-sm text-textMuted leading-relaxed max-w-3xl">
+              A standalone linear infiltration sequence. Traverse exactly 8 firewalled narrative chambers of increasing difficulty. Bypass locks under a shared 5-minute countdown clock. Maximum of 3 room failures allowed before permanent lockout.
+            </p>
+          </div>
+
+          <div
+            style={{ color: "#ef4444" }}
+            className="w-full md:w-auto shrink-0 flex items-center justify-end text-xs font-bold font-display tracking-wider group-hover:text-red-400 transition-colors duration-300 uppercase"
+          >
+            LAUNCH OVERRIDE PROTOCOL →
+          </div>
+        </Link>
       </div>
 
       {/* Back to Home Link */}

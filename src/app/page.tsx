@@ -87,6 +87,15 @@ export default function Home() {
                 START THE QUIZ
               </Link>
 
+              {/* Escape Room Hardcore CTA */}
+              <Link
+                href="/escape-room"
+                style={{ borderColor: "rgba(239, 68, 68, 0.45)", color: "#ef4444" }}
+                className="inline-flex items-center justify-center px-8 py-4 text-sm font-black font-display tracking-widest uppercase transition-all duration-300 rounded border hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500 text-center shadow-[0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+              >
+                ESCAPE ROOM 🔒
+              </Link>
+
               {/* Secondary lower-emphasis link */}
               <Link
                 href="/leaderboard"
@@ -266,8 +275,47 @@ export default function Home() {
         </div>
       </div>
 
+      {/* 2.5 FEATURED HARDCORE ESCAPE ROOM BANNER */}
+      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 border-t border-neonViolet/15">
+        <ScrollReveal>
+          <div
+            style={{ borderColor: "rgba(239, 68, 68, 0.25)" }}
+            className="w-full p-8 rounded-lg bg-bgDark border-2 hover:border-red-500 transition-all duration-300 relative overflow-hidden shadow-[0_0_25px_rgba(239,68,68,0.05)] text-left flex flex-col md:flex-row items-center justify-between gap-8"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 transform rotate-45 translate-x-12 -translate-y-12 border-b border-l border-red-500/10"></div>
+
+            <div className="flex-1">
+              <span
+                style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
+                className="inline-flex items-center gap-1.5 border px-3 py-1 rounded-full text-[10px] font-bold font-display tracking-widest uppercase mb-4 animate-pulse"
+              >
+                🚨 NEW HARDCORE MODE: ESCAPE ROOM 🚨
+              </span>
+
+              <h2 className="text-2xl md:text-3xl font-black font-display text-textPrimary uppercase mb-3 tracking-tight">
+                CORRUPTED SYSTEM ESCAPE
+              </h2>
+
+              <p className="text-xs md:text-sm text-textMuted max-w-xl leading-relaxed">
+                A narrative-driven, 8-room linear sequence of curated programming challenges. Race against a global 5-minute timer, managing a strict lock override system (max 3 room failures allowed). Can you hack your way out before the system wipes your stack?
+              </p>
+            </div>
+
+            <div className="flex shrink-0 w-full md:w-auto">
+              <Link
+                href="/escape-room"
+                style={{ borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444", backgroundColor: "rgba(239, 68, 68, 0.1)" }}
+                className="group w-full md:w-auto relative inline-flex items-center justify-center px-8 py-4 text-xs font-black font-display tracking-widest uppercase transition-all duration-300 rounded border hover:bg-red-500/20 hover:shadow-[0_0_15px_rgba(239, 68, 68, 0.4)] text-center"
+              >
+                INITIATE ESCAPE MODE →
+              </Link>
+            </div>
+          </div>
+        </ScrollReveal>
+      </div>
+
       {/* 3. CLOSING CTA SECTION */}
-      <div className="w-full max-w-5xl mx-auto px-6 md:px-12 py-16 mb-12">
+      <div className="w-full max-w-5xl mx-auto px-6 md:px-12 py-16 mb-12 border-t border-neonViolet/15">
         <ScrollReveal>
           <div className="w-full p-8 md:p-12 rounded-lg bg-gradient-to-r from-bgDark to-[#12131e] border border-neonViolet/30 relative overflow-hidden shadow-[0_0_20px_rgba(168,85,247,0.05)] text-center flex flex-col items-center">
             {/* Ambient subtle glow light */}

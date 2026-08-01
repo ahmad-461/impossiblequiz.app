@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import AITwinToggle from "../../components/AITwinToggle";
 
 const categories = [
   {
@@ -93,6 +97,8 @@ const categories = [
 ];
 
 export default function CategoriesPage() {
+  const [aiTwin, setAiTwin] = useState(false);
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-6xl mx-auto w-full select-none">
       {/* Header Badge */}
@@ -107,49 +113,55 @@ export default function CategoriesPage() {
         </span>
       </h1>
 
-      <p className="text-textMuted max-w-xl text-center text-sm md:text-base mb-12">
+      <p className="text-textMuted max-w-xl text-center text-sm md:text-base mb-10">
         Each sector demands extreme competence. Once entered, the simulation begins immediately. Choose wisely.
       </p>
 
+      {/* AI Twin Toggle Component */}
+      <AITwinToggle enabled={aiTwin} onChange={setAiTwin} />
+
       {/* Categories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mb-6">
-        {categories.map((cat) => (
-          <Link
-            key={cat.id}
-            href={cat.href}
-            aria-label={`Enter sector: ${cat.title}. Description: ${cat.desc}`}
-            className="group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border-2 border-neonViolet/20 hover:border-neonCyan transition-all duration-300 shadow-[0_0_10px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:-translate-y-1 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neonCyan"
-          >
-            {/* Background absolute subtle neon line */}
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
+        {categories.map((cat) => {
+          const finalHref = cat.href + (cat.href.includes("?") ? "&" : "?") + `aiTwin=${aiTwin}`;
+          return (
+            <Link
+              key={cat.id}
+              href={finalHref}
+              aria-label={`Enter sector: ${cat.title}. Description: ${cat.desc}`}
+              className="group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border-2 border-neonViolet/20 hover:border-neonCyan transition-all duration-300 shadow-[0_0_10px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:-translate-y-1 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neonCyan"
+            >
+              {/* Background absolute subtle neon line */}
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
 
-            <div>
-              {/* Category Header */}
-              <div className="flex justify-between items-start mb-4">
-                <span>{cat.icon}</span>
-                <span className="text-xs font-display tracking-widest text-neonCyan bg-neonCyan/10 border border-neonCyan/25 px-2.5 py-0.5 rounded">
-                  {cat.tag}
-                </span>
+              <div>
+                {/* Category Header */}
+                <div className="flex justify-between items-start mb-4">
+                  <span>{cat.icon}</span>
+                  <span className="text-xs font-display tracking-widest text-neonCyan bg-neonCyan/10 border border-neonCyan/25 px-2.5 py-0.5 rounded">
+                    {cat.tag}
+                  </span>
+                </div>
+
+                {/* Category Title with optional Chevron for Expandable ones */}
+                <h3 className="text-xl font-bold font-display tracking-wide text-textPrimary group-hover:text-neonCyan transition-colors duration-300 mb-2 uppercase flex items-center gap-1.5">
+                  {cat.title}
+                  {cat.isExpandable && <span className="text-neonCyan group-hover:text-neonViolet transition-colors duration-300 text-lg">→</span>}
+                </h3>
+
+                {/* Description */}
+                <p className="text-sm text-textMuted leading-relaxed">
+                  {cat.desc}
+                </p>
               </div>
 
-              {/* Category Title with optional Chevron for Expandable ones */}
-              <h3 className="text-xl font-bold font-display tracking-wide text-textPrimary group-hover:text-neonCyan transition-colors duration-300 mb-2 uppercase flex items-center gap-1.5">
-                {cat.title}
-                {cat.isExpandable && <span className="text-neonCyan group-hover:text-neonViolet transition-colors duration-300 text-lg">→</span>}
-              </h3>
-
-              {/* Description */}
-              <p className="text-sm text-textMuted leading-relaxed">
-                {cat.desc}
-              </p>
-            </div>
-
-            {/* Simulated Action */}
-            <div className="mt-6 flex items-center justify-end text-xs font-bold font-display tracking-wider text-neonViolet group-hover:text-neonCyan transition-colors duration-300 uppercase">
-              {cat.actionLabel}
-            </div>
-          </Link>
-        ))}
+              {/* Simulated Action */}
+              <div className="mt-6 flex items-center justify-end text-xs font-bold font-display tracking-wider text-neonViolet group-hover:text-neonCyan transition-colors duration-300 uppercase">
+                {cat.actionLabel}
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       {/* 5. HARDCORE MODE: ESCAPE ROOM */}

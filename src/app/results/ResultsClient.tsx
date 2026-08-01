@@ -17,6 +17,9 @@ interface QuizResult {
   submitted?: boolean;
   submittedId?: string;
   nickname?: string;
+  aiTwinEnabled?: boolean;
+  aiScore?: number;
+  aiStreak?: number;
 }
 
 const KNOWN_CATEGORIES = [
@@ -140,6 +143,9 @@ export default function ResultsClient() {
     const pStreak = searchParams.get("streak");
     const pCategory = searchParams.get("category");
     const pOutcome = searchParams.get("outcome");
+    const pAiTwin = searchParams.get("aiTwin");
+    const pAiScore = searchParams.get("aiScore");
+    const pAiStreak = searchParams.get("aiStreak");
 
     if (!pScore && !pCategory && !pOutcome) {
       return null;
@@ -172,6 +178,19 @@ export default function ResultsClient() {
       outcome = pOutcome as QuizResult["outcome"];
     }
 
+    // Sanitize AI parameters
+    const aiTwinEnabled = pAiTwin === "true";
+    let aiScore = 0;
+    if (pAiScore) {
+      aiScore = parseInt(pAiScore, 10);
+      if (isNaN(aiScore) || aiScore < 0) aiScore = 0;
+    }
+    let aiStreak = 0;
+    if (pAiStreak) {
+      aiStreak = parseInt(pAiStreak, 10);
+      if (isNaN(aiStreak) || aiStreak < 0) aiStreak = 0;
+    }
+
     return {
       score,
       peakStreak,
@@ -180,6 +199,9 @@ export default function ResultsClient() {
       accuracy: 100, // standard display placeholder for shared links
       correct: 10,
       total: 10,
+      aiTwinEnabled,
+      aiScore,
+      aiStreak,
     };
   }, [searchParams]);
 
@@ -192,6 +214,9 @@ export default function ResultsClient() {
     accuracy: 0,
     correct: 0,
     total: 0,
+    aiTwinEnabled: false,
+    aiScore: 0,
+    aiStreak: 0,
   };
 
   const isVictory = activeResult.outcome === "boss_victory" || activeResult.outcome === "pool_victory";
@@ -298,9 +323,27 @@ export default function ResultsClient() {
         ? "⚠️ SO CLOSE (Terminated at Boss)"
         : "🛡️ SIMULATION FAILED";
 
-    const shareUrl = typeof window !== "undefined"
+    let shareUrl = typeof window !== "undefined"
       ? `${window.location.origin}/results?score=${activeResult.score}&streak=${activeResult.peakStreak}&category=${activeResult.category}&outcome=${activeResult.outcome}`
       : "";
+
+    let twinDetailText = "";
+    if (activeResult.aiTwinEnabled) {
+      shareUrl += `&aiTwin=true&aiScore=${activeResult.aiScore}&aiStreak=${activeResult.aiStreak}`;
+
+      const twinOutcome = activeResult.score > (activeResult.aiScore || 0)
+        ? "🏆 DEFEATED THE AI TWIN"
+        : activeResult.score < (activeResult.aiScore || 0)
+        ? "⚠️ LOST TO THE AI TWIN"
+        : "⚖️ TIED WITH THE AI TWIN";
+
+      twinDetailText = `AI Twin Mode: Active
+AI Outcome: ${twinOutcome}
+AI Score: ${(activeResult.aiScore || 0).toLocaleString()}
+AI Peak Streak: ${activeResult.aiStreak || 0}
+---------------------------------
+`;
+    }
 
     const text = `🏆 THE IMPOSSIBLE QUIZ GENERATOR 🏆
 ---------------------------------
@@ -311,7 +354,7 @@ Peak Streak: ${activeResult.peakStreak}
 Accuracy: ${activeResult.accuracy}%
 Questions: ${activeResult.correct}/${activeResult.total}
 ---------------------------------
-Can you survive the AI mainframe? Try now!
+${twinDetailText}Can you survive the AI mainframe? Try now!
 Link: ${shareUrl}`;
 
     navigator.clipboard.writeText(text);
@@ -381,10 +424,57 @@ Link: ${shareUrl}`;
         {currentConfig.desc}
       </p>
 
+      {/* AI Twin Side-by-Side Head-to-Head panel (Visible during gameplay results view) */}
+      {activeResult.aiTwinEnabled && (
+        <div className="w-full p-6 rounded-lg bg-bgDark/80 border-2 border-neonCyan/30 mb-8 font-display text-center relative overflow-hidden shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+          <div className="absolute top-0 right-0 w-3 h-3 bg-neonCyan"></div>
+
+          <h2 className="text-[10px] tracking-widest text-neonCyan font-black uppercase mb-4">
+            🤖 AI TWIN SECTOR // HEAD-TO-HEAD COMPARISON
+          </h2>
+
+          <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto mb-4">
+            {/* Player Stats */}
+            <div className="flex flex-col gap-2 p-3 rounded bg-bgDark border border-neonCyan/20">
+              <span className="text-[10px] text-textMuted uppercase tracking-widest">YOU (PLAYER)</span>
+              <span className="text-2xl font-black text-neonCyan drop-shadow-[0_0_5px_rgba(34,211,238,0.3)]">
+                {activeResult.score.toLocaleString()}
+              </span>
+              <span className="text-[9px] text-textMuted uppercase tracking-wider">Peak Streak: {activeResult.peakStreak}</span>
+            </div>
+
+            {/* AI Twin Stats */}
+            <div className="flex flex-col gap-2 p-3 rounded bg-bgDark border border-neonViolet/30">
+              <span className="text-[10px] text-textMuted uppercase tracking-widest">AI TWIN</span>
+              <span className="text-2xl font-black text-neonViolet drop-shadow-[0_0_5px_rgba(168,85,247,0.3)]">
+                {(activeResult.aiScore || 0).toLocaleString()}
+              </span>
+              <span className="text-[9px] text-textMuted uppercase tracking-wider">Peak Streak: {activeResult.aiStreak || 0}</span>
+            </div>
+          </div>
+
+          <div className={`py-3 px-4 rounded border font-black text-xs tracking-wider uppercase ${
+            activeResult.score > (activeResult.aiScore || 0)
+              ? "bg-neonCyan/10 border-neonCyan text-neonCyan shadow-[0_0_12px_rgba(34,211,238,0.2)]"
+              : activeResult.score < (activeResult.aiScore || 0)
+              ? "bg-neonViolet/10 border-neonViolet text-neonViolet shadow-[0_0_12px_rgba(168,85,247,0.2)]"
+              : "bg-textMuted/10 border-textMuted text-textPrimary"
+          }`}>
+            {activeResult.score > (activeResult.aiScore || 0) ? (
+              <span>🏆 SYSTEM OVERLOAD // YOU DEFEATED THE AI TWIN! 🏆</span>
+            ) : activeResult.score < (activeResult.aiScore || 0) ? (
+              <span>⚠️ CORE FAILURE // THE AI TWIN OUT-INFILTRATED YOU! ⚠️</span>
+            ) : (
+              <span>⚖️ QUANTUM ENTANGLEMENT // MATCH WAS A TIE! ⚖️</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Share Card & Score Dashboard Container */}
       <div
         id="share-card"
-        className="w-full p-8 rounded-lg bg-bgDark border-2 border-neonViolet/30 shadow-[0_0_25px_rgba(168,85,247,0.15)] relative overflow-hidden mb-8"
+        className="w-full p-8 rounded-lg bg-bgDark border-2 border-neonViolet/30 shadow-[0_0_25px_rgba(168,85,247,0.15)] relative overflow-hidden mb-8 animate-card-glow"
       >
         <div className="absolute top-0 right-0 w-32 h-32 bg-neonViolet/5 transform rotate-45 translate-x-12 -translate-y-12 border-b border-l border-neonViolet/10"></div>
         <div className="absolute bottom-2 right-4 text-[10px] font-mono text-neonViolet/25 tracking-widest uppercase font-display">
@@ -404,6 +494,25 @@ Link: ${shareUrl}`;
             </span>
           </div>
         </div>
+
+        {/* Optional AI Twin Stamp directly embedded inside the share card image */}
+        {activeResult.aiTwinEnabled && (
+          <div className="mb-6 flex justify-center">
+            <div className={`px-4 py-1.5 rounded border-2 text-[10px] font-display font-black uppercase tracking-widest ${
+              activeResult.score > (activeResult.aiScore || 0)
+                ? "bg-neonCyan/10 border-neonCyan text-neonCyan shadow-[0_0_8px_rgba(34,211,238,0.2)] animate-pulse"
+                : activeResult.score < (activeResult.aiScore || 0)
+                ? "bg-neonViolet/10 border-neonViolet text-neonViolet shadow-[0_0_8px_rgba(168,85,247,0.2)]"
+                : "bg-textMuted/10 border-textMuted text-textPrimary"
+            }`}>
+              {activeResult.score > (activeResult.aiScore || 0)
+                ? "🏆 DEFEATED THE AI TWIN"
+                : activeResult.score < (activeResult.aiScore || 0)
+                ? "⚠️ LOST TO THE AI TWIN"
+                : "⚖️ TIED WITH THE AI TWIN"}
+            </div>
+          </div>
+        )}
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center select-none font-display">
@@ -511,19 +620,19 @@ Link: ${shareUrl}`;
       </div>
 
       {/* Buttons Action Group */}
-      <div className="flex flex-col sm:flex-row items-center gap-6 w-full justify-center">
+      <div className="flex flex-col sm:flex-row items-center gap-6 w-full justify-center font-display">
         {/* Play Again */}
         <Link
           href={
             activeResult.category.startsWith("programming_")
-              ? `/categories/programming/${activeResult.category.split("_")[1] || "python"}/difficulty`
+              ? `/categories/programming/${activeResult.category.split("_")[1] || "python"}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
               : activeResult.category.startsWith("business_")
-              ? `/categories/business/${activeResult.category.split("_")[1] || "marketing"}/difficulty`
+              ? `/categories/business/${activeResult.category.split("_")[1] || "marketing"}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
               : activeResult.category.startsWith("english_")
-              ? `/categories/english/${activeResult.category.split("_")[1] || "grammar"}/difficulty`
-              : "/categories"
+              ? `/categories/english/${activeResult.category.split("_")[1] || "grammar"}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
+              : `/categories?aiTwin=${activeResult.aiTwinEnabled}`
           }
-          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet font-display"
+          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet"
         >
           PLAY AGAIN
         </Link>
@@ -531,7 +640,7 @@ Link: ${shareUrl}`;
         {/* View Leaderboard */}
         <Link
           href="/leaderboard"
-          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded bg-neonCyan text-bgDark hover:bg-neonCyan/90 hover:shadow-[0_0_20px_rgba(34,211,238,0.6)] focus:outline-none focus:ring-2 focus:ring-neonCyan font-display"
+          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded bg-neonCyan text-bgDark hover:bg-neonCyan/90 hover:shadow-[0_0_20px_rgba(34,211,238,0.6)] focus:outline-none focus:ring-2 focus:ring-neonCyan"
         >
           VIEW LEADERBOARD
         </Link>

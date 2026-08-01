@@ -39,6 +39,60 @@ const parseCategoryInfo = (id: string) => {
     };
   }
 
+  if (id.startsWith("business_")) {
+    const parts = id.split("_");
+    const subRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const subMapping: Record<string, string> = {
+      marketing: "Marketing",
+      finance: "Finance",
+      accounting: "Accounting",
+      entrepreneurship: "Entrepreneurship",
+      management: "Management",
+      economics: "Economics",
+      "business-strategy": "Business Strategy",
+    };
+
+    const formattedSub = subMapping[subRaw.toLowerCase()] || subRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    return {
+      isExtendedProgramming: true,
+      language: subRaw,
+      difficulty: diffRaw as "easy" | "medium" | "hard" | "impossible",
+      label: "BUS.MGMT",
+      displayName: `Business: ${formattedSub} (${formattedDiff})`
+    };
+  }
+
+  if (id.startsWith("english_")) {
+    const parts = id.split("_");
+    const subRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const subMapping: Record<string, string> = {
+      grammar: "Grammar",
+      vocabulary: "Vocabulary",
+      "synonyms-antonyms": "Synonyms & Antonyms",
+      tenses: "Tenses",
+      "sentence-correction": "Sentence Correction",
+      "idioms-phrases": "Idioms & Phrases",
+      "reading-comprehension": "Reading Comprehension",
+    };
+
+    const formattedSub = subMapping[subRaw.toLowerCase()] || subRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    return {
+      isExtendedProgramming: true,
+      language: subRaw,
+      difficulty: diffRaw as "easy" | "medium" | "hard" | "impossible",
+      label: "ENG.LANG",
+      displayName: `English: ${formattedSub} (${formattedDiff})`
+    };
+  }
+
   const labelMap: Record<string, string> = {
     programming: "SYS.LANG",
     "logic-algorithms": "ALG.COMP",
@@ -55,6 +109,15 @@ const parseCategoryInfo = (id: string) => {
   };
 };
 
+const AI_STATUS_LINES = [
+  "> ANALYZING PATTERN...",
+  "> CROSS-REFERENCING DATABASE...",
+  "> COMPILING RESPONSE...",
+  "> RUNNING COGNITIVE SIMULATION...",
+  "> INTERCEPTING DATA STREAM...",
+  "> PARSING SYNTAX TREE...",
+];
+
 function QuizContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -70,6 +133,19 @@ function QuizContent() {
   const [peakStreak, setPeakStreak] = useState<number>(0);
   const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState<number>(0);
   const [totalCorrectAnswers, setTotalCorrectAnswers] = useState<number>(0);
+
+  // AI Twin States
+  const [isAiTwinActive, setIsAiTwinActive] = useState<boolean>(false);
+  const [aiScore, setAiScore] = useState<number>(0);
+  const [aiStreak, setAiStreak] = useState<number>(0);
+  const [aiPeakStreak, setAiPeakStreak] = useState<number>(0);
+  const [aiState, setAiState] = useState<"thinking" | "locked_in" | "answered">("thinking");
+  const [aiStatusText, setAiStatusText] = useState<string>("> INITIALIZING COGNITIVE CORE...");
+
+  // AI Twin Refs
+  const aiWillBeCorrectRef = useRef<boolean>(false);
+  const aiTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const aiStatusIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Difficulty States & History
   const [currentDifficulty, setCurrentDifficulty] = useState<"easy" | "medium" | "hard" | "impossible">("easy");
@@ -108,7 +184,11 @@ function QuizContent() {
     hist: { correct: boolean; difficulty: "easy" | "medium" | "hard" | "impossible" }[],
     askedTexts: string[],
     askedIds: string[],
-    currQuestion: Question | null
+    currQuestion: Question | null,
+    twinActive: boolean,
+    twinScore: number,
+    twinStreak: number,
+    twinPeakStreak: number
   ) => {
     try {
       const stateObj = {
@@ -124,8 +204,12 @@ function QuizContent() {
         alreadyAskedTexts: askedTexts,
         alreadyAskedIds: askedIds,
         currentQuestion: currQuestion,
+        isAiTwinActive: twinActive,
+        aiScore: twinScore,
+        aiStreak: twinStreak,
+        aiPeakStreak: twinPeakStreak,
       };
-      const sessionKey = categoryId.startsWith("programming_")
+      const sessionKey = categoryId.startsWith("programming_") || categoryId.startsWith("business_") || categoryId.startsWith("english_")
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
       sessionStorage.setItem(sessionKey, JSON.stringify(stateObj));
@@ -137,7 +221,7 @@ function QuizContent() {
   // Helper to clear session state from sessionStorage
   const clearSessionState = () => {
     try {
-      const sessionKey = categoryId.startsWith("programming_")
+      const sessionKey = categoryId.startsWith("programming_") || categoryId.startsWith("business_") || categoryId.startsWith("english_")
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
       sessionStorage.removeItem(sessionKey);
@@ -191,7 +275,10 @@ function QuizContent() {
     finalPeakStreak: number,
     outcome: "boss_victory" | "pool_victory" | "defeat" | "boss_defeat",
     correct: number,
-    total: number
+    total: number,
+    twinActive = false,
+    twinScore = 0,
+    twinStreak = 0
   ) => {
     clearSessionState();
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
@@ -203,9 +290,18 @@ function QuizContent() {
       accuracy,
       correct,
       total,
+      aiTwinEnabled: twinActive,
+      aiScore: twinScore,
+      aiStreak: twinStreak,
     };
     sessionStorage.setItem("impossible_quiz_result", JSON.stringify(resultState));
-    router.push("/results");
+
+    // Construct search parameters for link sharing
+    let shareUrl = `/results?category=${categoryId}&score=${finalScore}&streak=${finalPeakStreak}&outcome=${outcome}`;
+    if (twinActive) {
+      shareUrl += `&aiTwin=true&aiScore=${twinScore}&aiStreak=${twinStreak}`;
+    }
+    router.push(shareUrl);
   };
 
   // Helper to trigger optimistic pre-fetching for the subsequent question
@@ -280,7 +376,7 @@ function QuizContent() {
     const initializeQuiz = async () => {
       setIsLoading(true);
 
-      const sessionKey = categoryId.startsWith("programming_")
+      const sessionKey = categoryId.startsWith("programming_") || categoryId.startsWith("business_") || categoryId.startsWith("english_")
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
 
@@ -311,6 +407,13 @@ function QuizContent() {
         setAlreadyAskedIds(restored.alreadyAskedIds);
         setCurrentQuestion(restored.currentQuestion);
 
+        // Restore AI stats
+        const activeAi = restored.isAiTwinActive || false;
+        setIsAiTwinActive(activeAi);
+        setAiScore(restored.aiScore || 0);
+        setAiStreak(restored.aiStreak || 0);
+        setAiPeakStreak(restored.aiPeakStreak || 0);
+
         // Pre-clear old next-question prefetch slots
         setNextQuestion(null);
         setNextQuestionDifficulty(null);
@@ -327,6 +430,15 @@ function QuizContent() {
       const startingDiff = catInfo.isExtendedProgramming ? catInfo.difficulty : "easy";
       const startingLives = startingDiff === "impossible" ? 1 : 3;
       const initialTimer = startingDiff === "impossible" ? 15 : 30;
+
+      // Check query parameter for AI Twin
+      const initialAiActive = searchParams.get("aiTwin") === "true";
+      setIsAiTwinActive(initialAiActive);
+      setAiScore(0);
+      setAiStreak(0);
+      setAiPeakStreak(0);
+      setAiState("thinking");
+      setAiStatusText("> INITIALIZING COGNITIVE CORE...");
 
       // Standard clean initialization
       setLives(startingLives);
@@ -358,12 +470,28 @@ function QuizContent() {
         setAlreadyAskedIds(askedIds);
 
         // Save session immediately
-        saveSessionState(startingLives, 0, 0, 0, 0, 0, startingDiff, [], askedTexts, askedIds, firstQuestion);
+        saveSessionState(
+          startingLives,
+          0,
+          0,
+          0,
+          0,
+          0,
+          startingDiff,
+          [],
+          askedTexts,
+          askedIds,
+          firstQuestion,
+          initialAiActive,
+          0,
+          0,
+          0
+        );
 
         // Prefetch the next question
         triggerPrefetch(firstQuestion, [], askedTexts, askedIds);
       } else {
-        finishQuiz(0, 0, "defeat", 0, 0);
+        finishQuiz(0, 0, "defeat", 0, 0, initialAiActive, 0, 0);
       }
       setIsLoading(false);
     };
@@ -372,6 +500,8 @@ function QuizContent() {
 
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+      if (aiStatusIntervalRef.current) clearInterval(aiStatusIntervalRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId]);
@@ -405,11 +535,66 @@ function QuizContent() {
     };
   }, [currentQuestion, selectionState, isLoading, currentDifficulty]);
 
+  // Start Simulated AI Twin turn
+  const startAiTwinTurn = (difficulty: "easy" | "medium" | "hard" | "impossible") => {
+    if (!isAiTwinActive) return;
+
+    if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+    if (aiStatusIntervalRef.current) clearInterval(aiStatusIntervalRef.current);
+
+    setAiState("thinking");
+
+    // 1. Determine correctness weighted by difficulty
+    // Easy: 85%, Medium: 65%, Hard: 45%, Impossible: 25%
+    let prob = 0.85;
+    if (difficulty === "medium") prob = 0.65;
+    else if (difficulty === "hard") prob = 0.45;
+    else if (difficulty === "impossible") prob = 0.25;
+
+    const willBeCorrect = Math.random() < prob;
+    aiWillBeCorrectRef.current = willBeCorrect;
+
+    // 2. Select initial status
+    const initialLine = AI_STATUS_LINES[Math.floor(Math.random() * AI_STATUS_LINES.length)];
+    setAiStatusText(initialLine);
+
+    // 3. Rotate status lines
+    let statusIndex = 0;
+    aiStatusIntervalRef.current = setInterval(() => {
+      statusIndex = (statusIndex + 1) % AI_STATUS_LINES.length;
+      setAiStatusText(AI_STATUS_LINES[statusIndex]);
+    }, 1500);
+
+    // 4. Thinking delay: 2-8 seconds
+    const delay = Math.floor(Math.random() * 6000) + 2000;
+
+    aiTimerRef.current = setTimeout(() => {
+      if (aiStatusIntervalRef.current) clearInterval(aiStatusIntervalRef.current);
+      setAiState("locked_in");
+      setAiStatusText("> RESPONSE COMPILED // LOCKED IN");
+    }, delay);
+  };
+
+  useEffect(() => {
+    if (currentQuestion && isAiTwinActive && selectionState === "idle") {
+      startAiTwinTurn(currentDifficulty);
+    }
+    return () => {
+      if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+      if (aiStatusIntervalRef.current) clearInterval(aiStatusIntervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion, isAiTwinActive, currentDifficulty, selectionState]);
+
   // Unified logic to process an answer (either select option or timeout)
   const processAnswer = async (correct: boolean, chosenIdx: number | null) => {
     if (selectionState === "selected" || !currentQuestion) return;
 
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+
+    // Clear AI Twin compilation timers immediately
+    if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+    if (aiStatusIntervalRef.current) clearInterval(aiStatusIntervalRef.current);
 
     setSelectionState("selected");
     setSelectedIdx(chosenIdx);
@@ -445,6 +630,40 @@ function QuizContent() {
       setStreak(0);
       nextLives -= 1;
       setLives(nextLives);
+    }
+
+    // AI Twin Resolution
+    let nextAiScore = aiScore;
+    let nextAiStreak = aiStreak;
+    let nextAiPeakStreak = aiPeakStreak;
+
+    if (isAiTwinActive) {
+      const aiCorrect = aiWillBeCorrectRef.current;
+      setAiState("answered");
+
+      if (aiCorrect) {
+        nextAiStreak += 1;
+        if (nextAiStreak > nextAiPeakStreak) {
+          nextAiPeakStreak = nextAiStreak;
+          setAiPeakStreak(nextAiPeakStreak);
+        }
+        setAiStreak(nextAiStreak);
+
+        let basePoints = 100;
+        if (currentDifficulty === "medium") basePoints = 200;
+        if (currentDifficulty === "hard") basePoints = 300;
+        if (currentDifficulty === "impossible") basePoints = 500;
+
+        const aiScoredPoints = Math.round(basePoints * (1 + nextAiStreak * 0.1));
+        nextAiScore += aiScoredPoints;
+        setAiScore(nextAiScore);
+
+        setAiStatusText(`> CORRECT // SECURED +${aiScoredPoints} PTS`);
+      } else {
+        nextAiStreak = 0;
+        setAiStreak(0);
+        setAiStatusText("> INCORRECT // ACCESS DENIED");
+      }
     }
 
     // Append to actual history
@@ -503,12 +722,30 @@ function QuizContent() {
     setTimeout(async () => {
       if (isGameOver) {
         const finalOutcome = currentQuestion.isBossRound ? "boss_defeat" : "defeat";
-        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), finalOutcome, nextCorrect, totalQuestionsAnswered + 1);
+        finishQuiz(
+          nextScore,
+          Math.max(peakStreak, nextStreak),
+          finalOutcome,
+          nextCorrect,
+          totalQuestionsAnswered + 1,
+          isAiTwinActive,
+          nextAiScore,
+          nextAiPeakStreak
+        );
         return;
       }
 
       if (isBossVictory) {
-        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "boss_victory", nextCorrect, totalQuestionsAnswered + 1);
+        finishQuiz(
+          nextScore,
+          Math.max(peakStreak, nextStreak),
+          "boss_victory",
+          nextCorrect,
+          totalQuestionsAnswered + 1,
+          isAiTwinActive,
+          nextAiScore,
+          nextAiPeakStreak
+        );
         return;
       }
 
@@ -548,7 +785,16 @@ function QuizContent() {
       }
 
       if (!nextActiveQuestion) {
-        finishQuiz(nextScore, Math.max(peakStreak, nextStreak), "pool_victory", nextCorrect, totalQuestionsAnswered + 1);
+        finishQuiz(
+          nextScore,
+          Math.max(peakStreak, nextStreak),
+          "pool_victory",
+          nextCorrect,
+          totalQuestionsAnswered + 1,
+          isAiTwinActive,
+          nextAiScore,
+          nextAiPeakStreak
+        );
         return;
       }
 
@@ -564,7 +810,11 @@ function QuizContent() {
         updatedHistory,
         currentAskedTexts,
         currentAskedIds,
-        nextActiveQuestion
+        nextActiveQuestion,
+        isAiTwinActive,
+        nextAiScore,
+        nextAiStreak,
+        nextAiPeakStreak
       );
 
       // Reset state for the next question
@@ -614,74 +864,164 @@ function QuizContent() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 md:py-12 max-w-4xl mx-auto w-full select-none animate-page-fade">
-      {/* Metrics Bar */}
-      <div className="w-full flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-6 border-b border-neonViolet/20 pb-4">
-        {/* Active category details */}
-        <div className="flex flex-col text-center md:text-left">
+      {/* Category header details */}
+      <div className="w-full text-center md:text-left mb-6 flex justify-between items-center border-b border-neonViolet/15 pb-2">
+        <div className="flex flex-col">
           <span className="text-[10px] font-display tracking-widest text-textMuted uppercase">CURRENT SIMULATION</span>
           <span className="text-sm font-black text-neonCyan font-display uppercase tracking-wider">
             {categoryDisplayName} {" // "} {categoryLabel}
           </span>
         </div>
 
-        {/* Lives, Streak, and Score indicators */}
-        <div className="flex flex-wrap items-center justify-between md:justify-end gap-4 md:gap-8 w-full md:w-auto">
-          {/* Shields */}
-          <div className="flex flex-col items-start md:items-end">
-            <span className="text-[10px] font-display tracking-widest text-textMuted uppercase mb-1">SHIELD</span>
-            <div className="flex gap-1">
-              {Array.from({ length: currentDifficulty === "impossible" ? 1 : 3 }).map((_, idx) => {
-                const heart = idx + 1;
-                return (
-                  <span
-                    key={heart}
-                    className={`text-lg transition-all duration-300 ${
-                      heart <= lives ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]" : "opacity-20 scale-90"
-                    }`}
-                  >
-                    ❤️
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Streak */}
-          <div className="flex flex-col items-start md:items-end">
-            <span className="text-[10px] font-display tracking-widest text-textMuted uppercase mb-1">STREAK</span>
-            <div className="flex items-center gap-1">
-              <span
-                key={streak}
-                className={`text-sm font-black text-neonViolet font-display ${streak > 0 ? "animate-streak-pulse" : ""}`}
-              >
-                {streak}
-              </span>
-              <span className={`text-base transition-transform duration-300 ${streak > 0 ? "scale-110" : "opacity-35"}`}>
-                🔥
-              </span>
-            </div>
-          </div>
-
-          {/* Score */}
-          <div className="text-left md:text-right">
-            <span className="text-[10px] font-display tracking-widest text-textMuted block uppercase mb-1">SCORE</span>
-            <span className="text-sm font-black text-neonCyan font-display">
-              {score.toLocaleString()}
+        {/* Timer */}
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <span className="text-[10px] font-display tracking-widest text-textMuted block uppercase mb-1">TIMER</span>
+            <span className={`text-sm font-black font-display transition-colors duration-200 ${timer <= 5 ? "text-neonViolet animate-pulse" : "text-neonCyan"}`}>
+              {timer < 10 ? `00:0${timer}` : `00:${timer}`}
             </span>
           </div>
-
-          {/* Timer */}
-          <div className="flex items-center gap-2">
-            <div className="text-left md:text-right">
-              <span className="text-[10px] font-display tracking-widest text-textMuted block uppercase mb-1">TIMER</span>
-              <span className={`text-sm font-black font-display transition-colors duration-200 ${timer <= 5 ? "text-neonViolet animate-pulse" : "text-neonCyan"}`}>
-                {timer < 10 ? `00:0${timer}` : `00:${timer}`}
-              </span>
-            </div>
-            <div className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${timer <= 5 ? "bg-neonViolet animate-ping" : "bg-neonCyan"}`}></div>
-          </div>
+          <div className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${timer <= 5 ? "bg-neonViolet animate-ping" : "bg-neonCyan"}`}></div>
         </div>
       </div>
+
+      {/* Dynamic HUD Grid: Side-by-Side if AI Twin is enabled */}
+      {isAiTwinActive ? (
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Player HUD */}
+          <div className="p-4 rounded bg-bgDark border-2 border-neonCyan/40 flex flex-col justify-between gap-3 relative overflow-hidden shadow-[inset_0_0_8px_rgba(34,211,238,0.05)]">
+            <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-neonCyan"></div>
+            <div className="flex justify-between items-center select-none font-display">
+              <span className="text-[10px] tracking-widest text-neonCyan font-black uppercase">PLAYER_HUD // ONLINE</span>
+              <span className="text-[9px] tracking-widest text-textMuted uppercase">01</span>
+            </div>
+            <div className="flex justify-between items-center">
+              {/* Shields */}
+              <div className="flex flex-col items-start select-none font-display">
+                <span className="text-[9px] tracking-widest text-textMuted uppercase mb-1">SHIELD</span>
+                <div className="flex gap-1">
+                  {Array.from({ length: currentDifficulty === "impossible" ? 1 : 3 }).map((_, idx) => {
+                    const heart = idx + 1;
+                    return (
+                      <span
+                        key={heart}
+                        className={`text-base transition-all duration-300 ${
+                          heart <= lives ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]" : "opacity-20 scale-90"
+                        }`}
+                      >
+                        ❤️
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Streak */}
+              <div className="flex flex-col items-center select-none font-display">
+                <span className="text-[9px] tracking-widest text-textMuted uppercase mb-1">STREAK</span>
+                <div className="flex items-center gap-1">
+                  <span className={`text-sm font-black text-neonViolet font-display ${streak > 0 ? "animate-streak-pulse" : ""}`}>
+                    {streak}
+                  </span>
+                  <span className={`text-sm transition-transform duration-300 ${streak > 0 ? "scale-110" : "opacity-35"}`}>
+                    🔥
+                  </span>
+                </div>
+              </div>
+
+              {/* Score */}
+              <div className="flex flex-col items-end font-display">
+                <span className="text-[9px] tracking-widest text-textMuted uppercase mb-1">SCORE</span>
+                <span className="text-sm font-black text-neonCyan">{score.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Twin HUD */}
+          <div className="p-4 rounded bg-bgDark border-2 border-neonViolet flex flex-col justify-between gap-3 relative overflow-hidden shadow-[inset_0_0_8px_rgba(168,85,247,0.05),0_0_15px_rgba(168,85,247,0.1)]">
+            <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-neonViolet"></div>
+            <div className="flex justify-between items-center select-none font-display">
+              <span className="text-[10px] tracking-widest text-neonViolet font-black uppercase">AI_TWIN_HUD // ACTIVE</span>
+              <span className="text-[9px] tracking-widest text-textMuted uppercase">02</span>
+            </div>
+            <div className="flex justify-between items-center gap-2">
+              {/* Status */}
+              <div className="flex-1 flex flex-col items-start min-w-[50%]">
+                <span className="text-[9px] font-display tracking-widest text-textMuted uppercase mb-1">AI STATUS</span>
+                <span className={`text-[10px] font-mono font-bold truncate transition-colors duration-300 ${
+                  aiState === "thinking" ? "text-neonViolet" : aiStatusText.includes("CORRECT") ? "text-neonCyan animate-pulse" : "text-neonViolet animate-pulse"
+                }`}>
+                  {aiStatusText}
+                </span>
+              </div>
+
+              {/* Streak */}
+              <div className="flex flex-col items-center select-none font-display">
+                <span className="text-[9px] tracking-widest text-textMuted uppercase mb-1">STREAK</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-black text-neonViolet">{aiStreak}</span>
+                  <span className="text-sm">🔥</span>
+                </div>
+              </div>
+
+              {/* Score */}
+              <div className="flex flex-col items-end font-display">
+                <span className="text-[9px] tracking-widest text-textMuted uppercase mb-1">SCORE</span>
+                <span className="text-sm font-black text-neonCyan">{aiScore.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Original Metrics Bar (Single column layout) */
+        <div className="w-full flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-6 border-b border-neonViolet/20 pb-4">
+          <div className="flex flex-wrap items-center justify-between md:justify-end gap-4 md:gap-8 w-full md:w-auto">
+            {/* Shields */}
+            <div className="flex flex-col items-start md:items-end">
+              <span className="text-[10px] font-display tracking-widest text-textMuted uppercase mb-1">SHIELD</span>
+              <div className="flex gap-1">
+                {Array.from({ length: currentDifficulty === "impossible" ? 1 : 3 }).map((_, idx) => {
+                  const heart = idx + 1;
+                  return (
+                    <span
+                      key={heart}
+                      className={`text-lg transition-all duration-300 ${
+                        heart <= lives ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]" : "opacity-20 scale-90"
+                      }`}
+                    >
+                      ❤️
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Streak */}
+            <div className="flex flex-col items-start md:items-end">
+              <span className="text-[10px] font-display tracking-widest text-textMuted uppercase mb-1">STREAK</span>
+              <div className="flex items-center gap-1">
+                <span
+                  key={streak}
+                  className={`text-sm font-black text-neonViolet font-display ${streak > 0 ? "animate-streak-pulse" : ""}`}
+                >
+                  {streak}
+                </span>
+                <span className={`text-base transition-transform duration-300 ${streak > 0 ? "scale-110" : "opacity-35"}`}>
+                  🔥
+                </span>
+              </div>
+            </div>
+
+            {/* Score */}
+            <div className="text-left md:text-right">
+              <span className="text-[10px] font-display tracking-widest text-textMuted block uppercase mb-1">SCORE</span>
+              <span className="text-sm font-black text-neonCyan font-display">
+                {score.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Timer Bar */}
       <div className="w-full h-1 bg-bgDark border border-neonViolet/20 rounded-full mb-6 overflow-hidden">
@@ -717,11 +1057,23 @@ function QuizContent() {
             DIFFICULTY: {currentDifficulty}
           </span>
 
-          {currentQuestion.isBossRound && (
-            <span className="text-[10px] font-display tracking-widest text-neonViolet bg-neonViolet/10 border border-neonViolet/20 px-2.5 py-1 rounded animate-pulse font-bold">
-              ⚠️ BOSS ROUND ⚠️
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {isAiTwinActive && (
+              <span className={`text-[10px] font-display tracking-widest border px-2 py-0.5 rounded font-bold uppercase transition-all duration-300 ${
+                aiState === "thinking"
+                  ? "text-neonViolet bg-neonViolet/10 border-neonViolet/25 animate-pulse"
+                  : "text-neonCyan bg-neonCyan/10 border-neonCyan/25 shadow-[0_0_8px_rgba(34,211,238,0.3)] font-black"
+              }`}>
+                {aiState === "thinking" ? "🤖 AI TWIN: THINKING" : "🤖 AI TWIN: LOCKED IN"}
+              </span>
+            )}
+
+            {currentQuestion.isBossRound && (
+              <span className="text-[10px] font-display tracking-widest text-neonViolet bg-neonViolet/10 border border-neonViolet/20 px-2.5 py-1 rounded animate-pulse font-bold">
+                ⚠️ BOSS ROUND ⚠️
+              </span>
+            )}
+          </div>
 
           <span className="text-[10px] font-display tracking-widest text-textMuted font-bold uppercase">
             {totalQuestionsAnswered + 1} OF 10 ESTIMATED
@@ -805,7 +1157,7 @@ function QuizContent() {
       {/* Bottom retreat option */}
       <div className="w-full flex justify-between items-center mt-6">
         <Link
-          href="/categories"
+          href={`/categories?aiTwin=${isAiTwinActive}`}
           onClick={clearSessionState}
           className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
         >

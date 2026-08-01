@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Orbitron } from "next/font/google";
 import "./globals.css";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const orbitron = Orbitron({ subsets: ["latin"], variable: "--font-orbitron" });
@@ -34,22 +36,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${orbitron.variable}`}>
       <body className="font-sans bg-bgDark text-textPrimary min-h-screen flex flex-col">
-        {/* Persistent minimalist esports header */}
-        <header className="border-b border-neonViolet/20 bg-bgDark py-4 px-6 md:px-12 flex justify-between items-center shadow-[0_1px_10px_rgba(168,85,247,0.15)] select-none">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-black font-display tracking-widest text-neonViolet drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">
-              IMPOSSIBLE<span className="text-neonCyan drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">QUIZ</span>
-            </span>
-          </div>
-          <div className="text-xs uppercase tracking-widest text-neonCyan border border-neonCyan/40 px-2.5 py-1 rounded-md font-display bg-neonCyan/5 animate-pulse">
-            MAINFRAME // V1.0
-          </div>
-        </header>
+        {/* Persistent Sticky Navigation Header */}
+        <Header />
 
-        {/* Content Area */}
-        <main className="flex-1 flex flex-col">
+        {/* Main Content Area: padded top to clear the sticky header */}
+        <main className="flex-1 flex flex-col pt-20">
           {children}
         </main>
+
+        {/* Persistent Quiet Footer */}
+        <Footer />
       </body>
     </html>
   );

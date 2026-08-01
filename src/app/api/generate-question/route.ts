@@ -16,11 +16,25 @@ function getFallbackQuestion(
   alreadyAskedTexts: string[],
   isBossRound?: boolean
 ) {
+  let targetCategory = category;
+  let targetDifficulty = difficulty;
+
+  // If compound category like programming_rust_impossible or programming_rust_medium
+  if (category.startsWith("programming_")) {
+    const parts = category.split("_");
+    if (parts.length >= 3) {
+      targetCategory = `programming_${parts[1]}`;
+      targetDifficulty = parts[2];
+    } else if (parts.length === 2) {
+      targetCategory = category;
+    }
+  }
+
   // If isBossRound is requested, try to find a boss round question first
   let candidates = staticQuestions.filter((q) => {
-    const matchCategory = q.category === category;
+    const matchCategory = q.category === targetCategory;
     const matchBoss = isBossRound ? q.isBossRound : true;
-    const matchDiff = isBossRound ? true : q.difficulty === difficulty;
+    const matchDiff = isBossRound ? true : q.difficulty === targetDifficulty;
     const notAskedId = !alreadyAskedIds.includes(q.id);
     const notAskedText = !alreadyAskedTexts.includes(q.questionText);
     return matchCategory && matchBoss && matchDiff && notAskedId && notAskedText;
@@ -29,16 +43,21 @@ function getFallbackQuestion(
   if (candidates.length === 0) {
     // Relax already-asked text/id filters
     candidates = staticQuestions.filter((q) => {
-      const matchCategory = q.category === category;
+      const matchCategory = q.category === targetCategory;
       const matchBoss = isBossRound ? q.isBossRound : true;
-      const matchDiff = isBossRound ? true : q.difficulty === difficulty;
+      const matchDiff = isBossRound ? true : q.difficulty === targetDifficulty;
       return matchCategory && matchBoss && matchDiff;
     });
   }
 
   if (candidates.length === 0) {
     // Relax difficulty / boss round completely
-    candidates = staticQuestions.filter((q) => q.category === category);
+    candidates = staticQuestions.filter((q) => q.category === targetCategory);
+  }
+
+  if (candidates.length === 0) {
+    // Fallback to general programming category if language specific is empty
+    candidates = staticQuestions.filter((q) => q.category === "programming");
   }
 
   if (candidates.length === 0) {
@@ -64,7 +83,8 @@ async function callGemini(
   category: string,
   difficulty: string,
   alreadyAskedTexts: string[],
-  isBossRound: boolean
+  isBossRound: boolean,
+  language?: string
 ): Promise<unknown | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -74,9 +94,22 @@ async function callGemini(
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-  let prompt = `Generate ONE multiple-choice quiz question for the category '${category}' at '${difficulty}' difficulty.`;
-  if (isBossRound) {
-    prompt = `Generate ONE extremely challenging, advanced, multi-part, or complex Boss Round multiple-choice quiz question for the category '${category}' (difficulty is hard). This is the final Boss Round, so the question must require deep analytical reasoning or deep technical knowledge.`;
+  const capitalizedLang = language
+    ? language.charAt(0).toUpperCase() + language.slice(1)
+    : "";
+
+  let prompt = "";
+  if (language) {
+    if (difficulty === "impossible") {
+      prompt = `Generate ONE extremely complex, deep, and mind-bending multiple-choice quiz question focusing on advanced ${capitalizedLang} mechanics (e.g. compiler internal optimizations, low-level memory layout, esoteric specifications, or highly subtle language features/behaviors). The question must be genuinely "Impossible" and require elite expertise to answer correctly. Ensure the question is specific to ${capitalizedLang}.`;
+    } else {
+      prompt = `Generate ONE multiple-choice quiz question focusing on the ${capitalizedLang} programming language at '${difficulty}' difficulty. Ensure the concepts tested are highly relevant to ${capitalizedLang}.`;
+    }
+  } else {
+    prompt = `Generate ONE multiple-choice quiz question for the category '${category}' at '${difficulty}' difficulty.`;
+    if (isBossRound) {
+      prompt = `Generate ONE extremely challenging, advanced, multi-part, or complex Boss Round multiple-choice quiz question for the category '${category}' (difficulty is hard). This is the final Boss Round, so the question must require deep analytical reasoning or deep technical knowledge.`;
+    }
   }
 
   prompt += ` Ensure the question has 4 plausible options, and only one correct option.`;
@@ -112,7 +145,7 @@ async function callGemini(
             type: "INTEGER",
             description: "The 0-based index of the correct answer (0, 1, 2, or 3).",
           },
-          difficulty: { type: "STRING", description: "Must be 'easy', 'medium', or 'hard'." },
+          difficulty: { type: "STRING", description: "Must be 'easy', 'medium', 'hard', or 'impossible'." },
           category: { type: "STRING", description: "The category identifier." },
         },
         required: ["question", "options", "correctAnswerIndex", "difficulty", "category"],
@@ -157,15 +190,16 @@ async function fetchAndValidate(
   category: string,
   difficulty: string,
   alreadyAskedTexts: string[],
-  isBossRound: boolean
+  isBossRound: boolean,
+  language?: string
 ): Promise<GeminiQuestion | null> {
   // Try 1
-  let result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound);
+  let result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language);
   if (result && isValidQuestion(result)) {
     return result;
   }
   // Try 2 (Retry once)
-  result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound);
+  result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language);
   if (result && isValidQuestion(result)) {
     return result;
   }
@@ -183,15 +217,32 @@ export async function POST(request: Request) {
       isBossRound = false,
     } = body;
 
+    // Parse language and starting difficulty if it's programming_
+    let targetCategory = category;
+    let targetDifficulty = difficulty;
+    let language = "";
+
+    if (category.startsWith("programming_")) {
+      const parts = category.split("_");
+      if (parts.length >= 3) {
+        language = parts[1];
+        targetDifficulty = parts[2];
+        targetCategory = `programming_${language}`;
+      } else if (parts.length === 2) {
+        language = parts[1];
+        targetCategory = `programming_${language}`;
+      }
+    }
+
     // Fetch from Gemini and Validate
-    const geminiResult = await fetchAndValidate(category, difficulty, alreadyAskedTexts, isBossRound);
+    const geminiResult = await fetchAndValidate(targetCategory, targetDifficulty, alreadyAskedTexts, isBossRound, language);
 
     if (geminiResult) {
       // Map Gemini fields to expected Question shape
       const responseQuestion = {
         id: "ai_" + Math.random().toString(36).substring(2, 11),
-        category: category,
-        difficulty: difficulty as "easy" | "medium" | "hard",
+        category: category, // Keep the full original category so frontend knows what session it belongs to!
+        difficulty: targetDifficulty as "easy" | "medium" | "hard" | "impossible",
         questionText: geminiResult.question,
         options: geminiResult.options,
         correctAnswerIndex: geminiResult.correctAnswerIndex,
@@ -206,13 +257,24 @@ export async function POST(request: Request) {
       // Fallback seamlessly to Static Question
       const fallbackQuestion = getFallbackQuestion(
         category,
-        difficulty,
+        targetDifficulty,
         alreadyAskedIds,
         alreadyAskedTexts,
         isBossRound
       );
+
+      const responseQuestion = {
+        id: fallbackQuestion.id,
+        category: category, // Keep matching category ID
+        difficulty: targetDifficulty as "easy" | "medium" | "hard" | "impossible",
+        questionText: fallbackQuestion.questionText,
+        options: fallbackQuestion.options,
+        correctAnswerIndex: fallbackQuestion.correctAnswerIndex,
+        isBossRound: fallbackQuestion.isBossRound || false,
+      };
+
       return NextResponse.json({
-        question: fallbackQuestion,
+        question: responseQuestion,
         source: "static_fallback",
       });
     }

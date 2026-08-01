@@ -28,6 +28,42 @@ const KNOWN_CATEGORIES = [
 
 const KNOWN_OUTCOMES = ["boss_victory", "pool_victory", "boss_defeat", "defeat"];
 
+const formatCategoryName = (id: string): string => {
+  if (id.startsWith("programming_")) {
+    const parts = id.split("_");
+    const langRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const langMapping: Record<string, string> = {
+      python: "Python",
+      java: "Java",
+      javascript: "JavaScript",
+      c: "C",
+      cpp: "C++",
+      csharp: "C#",
+      php: "PHP",
+      typescript: "TypeScript",
+      go: "Go",
+      rust: "Rust",
+      kotlin: "Kotlin",
+      swift: "Swift",
+    };
+
+    const formattedLang = langMapping[langRaw.toLowerCase()] || langRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    return `Programming: ${formattedLang} (${formattedDiff})`;
+  }
+
+  const categoryLabels: Record<string, string> = {
+    programming: "Programming // SYS.LANG",
+    "logic-algorithms": "Logic/Algorithms // ALG.COMP",
+    "data-analytics": "Data Analytics // DAT.SCALE",
+    "computer-science-fundamentals": "Computer Science Fundamentals // SYS.CORE",
+  };
+  return categoryLabels[id] || id.toUpperCase();
+};
+
 const sanitizeNickname = (input: string): string => {
   let cleaned = input.replace(/<\/?[^>]+(>|$)/g, "");
   cleaned = cleaned.replace(/[<>]/g, "");
@@ -79,7 +115,7 @@ export default function ResultsClient() {
 
     // Sanitize Category
     let category = pCategory || "programming";
-    if (!KNOWN_CATEGORIES.includes(category)) {
+    if (!KNOWN_CATEGORIES.includes(category) && !category.startsWith("programming_")) {
       category = "programming";
     }
 
@@ -113,14 +149,7 @@ export default function ResultsClient() {
 
   const isVictory = activeResult.outcome === "boss_victory" || activeResult.outcome === "pool_victory";
 
-  const categoryLabels: Record<string, string> = {
-    programming: "Programming // SYS.LANG",
-    "logic-algorithms": "Logic/Algorithms // ALG.COMP",
-    "data-analytics": "Data Analytics // DAT.SCALE",
-    "computer-science-fundamentals": "Computer Science Fundamentals // SYS.CORE",
-  };
-
-  const categoryName = categoryLabels[activeResult.category] || activeResult.category.toUpperCase();
+  const categoryName = formatCategoryName(activeResult.category);
 
   const outcomeConfig = {
     boss_victory: {

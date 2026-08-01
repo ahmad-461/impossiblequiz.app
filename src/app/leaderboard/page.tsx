@@ -30,11 +30,39 @@ const MOCK_LEADERBOARDS: LeaderboardEntry[] = [
   { id: "mock_4", nickname: "ByteCommander", score: 8840, streak: 5, category: "logic-algorithms" },
 ];
 
-const categoryTags: Record<string, string> = {
-  programming: "SYS.LANG",
-  "logic-algorithms": "ALG.COMP",
-  "data-analytics": "DAT.SCALE",
-  "computer-science-fundamentals": "SYS.CORE",
+const getCategoryLabel = (cat: string): string => {
+  if (cat.startsWith("programming_")) {
+    const parts = cat.split("_");
+    const langRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const langMapping: Record<string, string> = {
+      python: "Python",
+      java: "Java",
+      javascript: "JS",
+      c: "C",
+      cpp: "C++",
+      csharp: "C#",
+      php: "PHP",
+      typescript: "TS",
+      go: "Go",
+      rust: "Rust",
+      kotlin: "Kotlin",
+      swift: "Swift",
+    };
+
+    const formattedLang = langMapping[langRaw.toLowerCase()] || langRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase(); // E, M, H, I
+    return `${formattedLang} (${formattedDiff})`;
+  }
+
+  const mapping: Record<string, string> = {
+    programming: "SYS.LANG",
+    "logic-algorithms": "ALG.COMP",
+    "data-analytics": "DAT.SCALE",
+    "computer-science-fundamentals": "SYS.CORE",
+  };
+  return mapping[cat] || "SYS.CORE";
 };
 
 function LeaderboardContent() {
@@ -59,7 +87,11 @@ function LeaderboardContent() {
   useEffect(() => {
     const sessionResult = getUserSessionResult();
     if (sessionResult && sessionResult.category) {
-      setActiveCategory(sessionResult.category);
+      if (sessionResult.category.startsWith("programming_")) {
+        setActiveCategory("programming");
+      } else {
+        setActiveCategory(sessionResult.category);
+      }
     }
   }, []);
 
@@ -75,11 +107,19 @@ function LeaderboardContent() {
       const sessionStreak = sessionResult?.peakStreak || 0;
       const sessionCategory = sessionResult?.category || "programming";
 
+      const matchCategory = activeCategory === "all" ||
+        sessionCategory === activeCategory ||
+        (activeCategory === "programming" && sessionCategory.startsWith("programming_"));
+
       try {
         let query = supabase.from("leaderboard").select("id, nickname, score, streak, category");
 
         if (activeCategory !== "all") {
-          query = query.eq("category", activeCategory);
+          if (activeCategory === "programming") {
+            query = query.or("category.eq.programming,category.like.programming_%");
+          } else {
+            query = query.eq("category", activeCategory);
+          }
         }
 
         const { data, error } = await query.order("score", { ascending: false }).limit(10);
@@ -99,7 +139,7 @@ function LeaderboardContent() {
 
         const hasHighlighted = finalEntries.some((e) => e.highlight);
         if (!hasHighlighted && sessionResult && sessionResult.submitted) {
-          if (activeCategory === "all" || sessionCategory === activeCategory) {
+          if (matchCategory) {
             const userEntry: LeaderboardEntry = {
               id: submittedId || "user_run",
               nickname: sessionNickname,
@@ -127,11 +167,16 @@ function LeaderboardContent() {
 
         let fallbackList = [...MOCK_LEADERBOARDS];
         if (activeCategory !== "all") {
-          fallbackList = fallbackList.filter((e) => e.category === activeCategory);
+          fallbackList = fallbackList.filter((e) => {
+            if (activeCategory === "programming") {
+              return e.category === "programming" || e.category.startsWith("programming_");
+            }
+            return e.category === activeCategory;
+          });
         }
 
         if (sessionResult) {
-          if (activeCategory === "all" || sessionCategory === activeCategory) {
+          if (matchCategory) {
             fallbackList.push({
               id: "local_user",
               nickname: sessionNickname,
@@ -247,7 +292,7 @@ function LeaderboardContent() {
                     {entry.nickname}
                   </span>
                   <span className="hidden sm:inline text-[9px] tracking-wider bg-bgDark border border-neonViolet/20 px-1.5 py-0.5 rounded text-neonViolet font-bold">
-                    {categoryTags[entry.category] || "SYS.CORE"}
+                    {getCategoryLabel(entry.category)}
                   </span>
                 </div>
 

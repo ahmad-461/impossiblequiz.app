@@ -76,7 +76,7 @@ export default function CategoriesPage() {
         {categories.map((cat) => (
           <Link
             key={cat.id}
-            href={`/quiz?category=${cat.id}`}
+            href={cat.id === "programming" ? "/categories/programming/languages" : `/quiz?category=${cat.id}`}
             aria-label={`Enter sector: ${cat.title}. Description: ${cat.desc}`}
             className="group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border-2 border-neonViolet/20 hover:border-neonCyan transition-all duration-300 shadow-[0_0_10px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:-translate-y-1 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neonCyan"
           >

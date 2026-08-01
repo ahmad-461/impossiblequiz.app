@@ -4,7 +4,7 @@ export interface Category {
   description?: string;
 }
 
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'impossible';
 
 export interface Question {
   id: string;

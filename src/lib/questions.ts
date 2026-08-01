@@ -980,5 +980,663 @@ export const staticQuestions: Question[] = [
     ],
     correctAnswerIndex: 1,
     isBossRound: true
+  },
+
+  // ==================== NEW BUSINESS SECTOR QUESTIONS ====================
+  // Marketing
+  {
+    id: "bus_mkt_easy",
+    category: "business_marketing",
+    difficulty: "easy",
+    questionText: "Which of the '4 Ps' of marketing represents the channels through which a product is distributed to consumers?",
+    options: ["Price", "Product", "Promotion", "Place"],
+    correctAnswerIndex: 3
+  },
+  {
+    id: "bus_mkt_med",
+    category: "business_marketing",
+    difficulty: "medium",
+    questionText: "What marketing metric is calculated by dividing total campaign spend by the number of new customers acquired?",
+    options: ["Return on Ad Spend (ROAS)", "Customer Acquisition Cost (CAC)", "Customer Lifetime Value (LTV)", "Click-Through Rate (CTR)"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_hard",
+    category: "business_marketing",
+    difficulty: "hard",
+    questionText: "Which psychological phenomenon explains why consumers perceive a product as higher quality simply because it is priced higher?",
+    options: ["Price-Quality Association (Veblen Effect)", "Decoy Effect", "Anchoring Bias", "Confirmation Bias"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "bus_mkt_impossible",
+    category: "business_marketing",
+    difficulty: "impossible",
+    questionText: "Under the Bass Diffusion Model, what does the coefficient of imitation (q) represent in relation to the adopter pool?",
+    options: [
+      "The rate of adoption driven strictly by mass media external advertising.",
+      "The rate of adoption driven by word-of-mouth or social contagion from existing adopters.",
+      "The price-elasticity coefficient of early-majority users.",
+      "The decay factor of technical superiority over a product lifecycle."
+    ],
+    correctAnswerIndex: 1
+  },
+
+  // Finance
+  {
+    id: "bus_fin_easy",
+    category: "business_finance",
+    difficulty: "easy",
+    questionText: "Which financial statement shows a company's revenues, expenses, and net income over a specific period?",
+    options: ["Balance Sheet", "Income Statement", "Statement of Cash Flows", "Statement of Retained Earnings"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_fin_med",
+    category: "business_finance",
+    difficulty: "medium",
+    questionText: "What is the Capital Asset Pricing Model (CAPM) primarily used to calculate?",
+    options: [
+      "The debt-to-equity ratio of leverage.",
+      "The expected return on an asset given its systematic risk (beta).",
+      "The terminal growth rate of free cash flows.",
+      "The cash conversion cycle of working capital."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_fin_hard",
+    category: "business_finance",
+    difficulty: "hard",
+    questionText: "In options trading, which 'Greek' measures the sensitivity of an option's price to changes in the volatility of the underlying asset?",
+    options: ["Delta", "Gamma", "Vega", "Theta"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "bus_fin_impossible",
+    category: "business_finance",
+    difficulty: "impossible",
+    questionText: "Under the Black-Scholes-Merton option pricing model, how is the d1 parameter mathematically interpreted in replicating portfolios?",
+    options: [
+      "The exact probability that the option will expire in-the-money.",
+      "The risk-neutral probability of stock price escalation.",
+      "The delta/hedge ratio of shares needed in the replicating portfolio to hedge the option.",
+      "The discount factor of the option premium over continuous time."
+    ],
+    correctAnswerIndex: 2
+  },
+
+  // Accounting
+  {
+    id: "bus_act_easy",
+    category: "business_accounting",
+    difficulty: "easy",
+    questionText: "According to the fundamental accounting equation, Assets must always equal Liabilities plus what?",
+    options: ["Net Income", "Retained Earnings", "Shareholders' Equity", "Operating Cash Flow"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "bus_act_med",
+    category: "business_accounting",
+    difficulty: "medium",
+    questionText: "Which depreciation method results in higher depreciation expenses in the early years of an asset's useful life?",
+    options: ["Straight-Line Method", "Units of Production Method", "Double-Declining Balance Method", "First-In, First-Out Method"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "bus_act_hard",
+    category: "business_accounting",
+    difficulty: "hard",
+    questionText: "Under both US GAAP and IFRS, how should research costs be treated during the research phase?",
+    options: [
+      "Capitalized as intangible assets and amortized.",
+      "Expensed immediately as incurred in the period.",
+      "Deferred until the product generates positive operating cash flow.",
+      "Allocated to Goodwill on the Balance Sheet."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_act_impossible",
+    category: "business_accounting",
+    difficulty: "impossible",
+    questionText: "How does a company account for hyperinflationary economies under IAS 29 regarding non-monetary items on the balance sheet?",
+    options: [
+      "They are restated using a general price index from the date of acquisition.",
+      "They are automatically depreciated to zero value on the reporting period.",
+      "They are converted using the spot exchange rate of a stable currency.",
+      "They must be reclassified as short-term liquid cash equivalents."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // Entrepreneurship
+  {
+    id: "bus_ent_easy",
+    category: "business_entrepreneurship",
+    difficulty: "easy",
+    questionText: "What is the 'Minimum Viable Product' (MVP) in lean startup methodology?",
+    options: [
+      "The cheapest possible version of a product made with low-grade materials.",
+      "A complete product with all envisioned features built in.",
+      "A version of a new product that allows a team to collect the maximum validated learning with the least effort.",
+      "An internal design mock-up that is never released to consumers."
+    ],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "bus_ent_med",
+    category: "business_entrepreneurship",
+    difficulty: "medium",
+    questionText: "What is a 'cap table' (capitalization table) primarily used to track?",
+    options: [
+      "Monthly operating expenditures and revenue targets.",
+      "The equity ownership percentages, dilution, and value of securities.",
+      "The capital depreciation schedule of physical assets.",
+      "The manufacturing capacity constraints of factory production."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_ent_hard",
+    category: "business_entrepreneurship",
+    difficulty: "hard",
+    questionText: "Which financing instrument allows startups to delay valuation until a future priced equity round, converting debt directly into equity?",
+    options: ["SAFE (Simple Agreement for Future Equity)", "Commercial Paper", "Revolving Line of Credit", "Series A Preferred Stock"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "bus_ent_impossible",
+    category: "business_entrepreneurship",
+    difficulty: "impossible",
+    questionText: "In a venture capital term sheet, how does a 'participating double-dip' liquidation preference affect common shareholders during an exit?",
+    options: [
+      "It allows common shareholders to receive twice their investment before preferred holders.",
+      "Preferred holders receive their return preference first, then share pro-rata in remaining proceeds, heavily diluting common holders.",
+      "It allows preferred holders to convert debt into a permanent double dividend structure.",
+      "It guarantees common shareholders are fully immune to any downside liquidation event."
+    ],
+    correctAnswerIndex: 1
+  },
+
+  // Management
+  {
+    id: "bus_mgt_easy",
+    category: "business_management",
+    difficulty: "easy",
+    questionText: "Which organizational structure groups employees based on specialized skills or roles (e.g., Sales, HR, Engineering)?",
+    options: ["Functional Structure", "Divisional Structure", "Matrix Structure", "Flat Structure"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "bus_mgt_med",
+    category: "business_management",
+    difficulty: "medium",
+    questionText: "What does Herzberg's Two-Factor Theory identify as 'hygiene factors' that do not motivate but prevent dissatisfaction?",
+    options: [
+      "Achievement, recognition, and the work itself.",
+      "Salary, working conditions, and company policies.",
+      "Personal growth, career advancement, and autonomy.",
+      "Stock options, executive bonuses, and vacation days."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mgt_hard",
+    category: "business_management",
+    difficulty: "hard",
+    questionText: "Under the VRIO framework, what must a resource be in order to provide a sustained competitive advantage?",
+    options: [
+      "Valuable, Rapidly reproducible, and Internationally outsourced.",
+      "Valuable, Rare, Inimitable, and Organized to exploit value.",
+      "Variable, Robust, Integrated, and Optimized.",
+      "Volatile, Risk-mitigated, Innovative, and Outperforming."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mgt_impossible",
+    category: "business_management",
+    difficulty: "impossible",
+    questionText: "According to Henry Mintzberg's managerial roles, which role fits under the Decisional category when a manager mediates a resource bottleneck?",
+    options: [
+      "Disturbance Handler",
+      "Spokesperson",
+      "Liaison",
+      "Disseminator"
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // Economics
+  {
+    id: "bus_eco_easy",
+    category: "business_economics",
+    difficulty: "easy",
+    questionText: "What economic law states that, all else being equal, as the price of a good increases, the quantity demanded decreases?",
+    options: ["Law of Supply", "Law of Demand", "Law of Diminishing Returns", "Law of One Price"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_eco_med",
+    category: "business_economics",
+    difficulty: "medium",
+    questionText: "What is the primary difference between Real GDP and Nominal GDP?",
+    options: [
+      "Nominal GDP includes services, while Real GDP only counts manufacturing.",
+      "Real GDP is adjusted for inflation/deflation, while Nominal GDP is not.",
+      "Real GDP is calculated using international dollar rates, while Nominal uses domestic currencies.",
+      "Nominal GDP is always negative during a recession."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_eco_hard",
+    category: "business_economics",
+    difficulty: "hard",
+    questionText: "Which market structure is characterized by a few dominant firms, high barriers to entry, and mutual strategic interdependence?",
+    options: ["Monopolistic Competition", "Oligopoly", "Perfect Competition", "Monopsony"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_eco_impossible",
+    category: "business_economics",
+    difficulty: "impossible",
+    questionText: "Under the Mundell-Fleming model, what is the consequence of expansionary fiscal policy in an open economy with perfect capital mobility and floating exchange rates?",
+    options: [
+      "It is highly effective as consumption and interest rates soar.",
+      "It is completely ineffective as exchange rate appreciation crowds out net exports.",
+      "It causes hyperinflation and immediate contraction of capital inflows.",
+      "It triggers currency depreciation, sparking a massive trade surplus."
+    ],
+    correctAnswerIndex: 1
+  },
+
+  // Business Strategy
+  {
+    id: "bus_stg_easy",
+    category: "business_business-strategy",
+    difficulty: "easy",
+    questionText: "What does the 'SWOT' acronym stand for in strategic planning?",
+    options: [
+      "Strengths, Weaknesses, Operations, Tactics",
+      "Strengths, Weaknesses, Opportunities, Threats",
+      "System, Workforce, Objectives, Timelines",
+      "Sales, Waste, Overhead, Taxes"
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_stg_med",
+    category: "business_business-strategy",
+    difficulty: "medium",
+    questionText: "Which of Michael Porter's Five Forces assesses how easy it is for buyers to drive down prices?",
+    options: [
+      "Threat of New Entrants",
+      "Bargaining Power of Buyers",
+      "Bargaining Power of Suppliers",
+      "Threat of Substitute Products"
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_stg_hard",
+    category: "business_business-strategy",
+    difficulty: "hard",
+    questionText: "What strategic concept advocates for creating uncontested market space rather than competing in bloody, crowded industries?",
+    options: ["Red Ocean Strategy", "Blue Ocean Strategy", "Disruptive Innovation", "First-Mover Advantage"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_stg_impossible",
+    category: "business_business-strategy",
+    difficulty: "impossible",
+    questionText: "According to the Resource-Based View (RBV) of the firm, how does causal ambiguity serve as an isolating mechanism for competitive advantage?",
+    options: [
+      "By preventing the firm's own executives from understanding cost structures.",
+      "By making it impossible for competitors to understand the link between resources and performance, preventing replication.",
+      "By legally protecting trade secrets through patents.",
+      "By keeping corporate structures highly decentralized."
+    ],
+    correctAnswerIndex: 1
+  },
+
+  // ==================== NEW ENGLISH SECTOR QUESTIONS ====================
+  // Grammar
+  {
+    id: "eng_grm_easy",
+    category: "english_grammar",
+    difficulty: "easy",
+    questionText: "Which of the following is a coordinating conjunction used to join words, phrases, or clauses?",
+    options: ["But", "Because", "Although", "Since"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "eng_grm_med",
+    category: "english_grammar",
+    difficulty: "medium",
+    questionText: "What type of pronoun is used in the sentence: 'The book *that* you gave me was fascinating'?",
+    options: ["Personal pronoun", "Possessive pronoun", "Relative pronoun", "Demonstrative pronoun"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_grm_hard",
+    category: "english_grammar",
+    difficulty: "hard",
+    questionText: "Identify the pronoun-antecedent agreement error in traditional prescriptive grammar:",
+    options: [
+      "Everyone must bring his or her pencil to the exam.",
+      "Each of the candidates must submit their application by Friday.",
+      "Neither of the boys completed his homework on time.",
+      "Both sisters brought their instruments to practice."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_impossible",
+    category: "english_grammar",
+    difficulty: "impossible",
+    questionText: "In English syntax, what syntactic phenomenon is demonstrated when an auxiliary verb moves to the left of the subject in non-subject wh-questions?",
+    options: [
+      "Subject-auxiliary inversion",
+      "Complementizer deletion",
+      "Cliticization",
+      "Pronominalization"
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // Vocabulary
+  {
+    id: "eng_voc_easy",
+    category: "english_vocabulary",
+    difficulty: "easy",
+    questionText: "Choose the word that means 'extremely large in size or scale':",
+    options: ["Minuscule", "Ephemeral", "Gargantuan", "Trivial"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_voc_med",
+    category: "english_vocabulary",
+    difficulty: "medium",
+    questionText: "What is the definition of the word 'ephemeral'?",
+    options: [
+      "Lasting for a very short time; transient.",
+      "Having a deep, profound meaning.",
+      "Showing extreme greed or avarice.",
+      "Extremely clean, pure, or spotless."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "eng_voc_hard",
+    category: "english_vocabulary",
+    difficulty: "hard",
+    questionText: "What does the word 'recondite' mean?",
+    options: [
+      "Abstruse, obscure, or little known.",
+      "Stubbornly refuse to obey authority.",
+      "Extremely cheerful and friendly.",
+      "Having a sweet or pleasant smell."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "eng_voc_impossible",
+    category: "english_vocabulary",
+    difficulty: "impossible",
+    questionText: "What is the etymological meaning of the word 'sesquipedalian'?",
+    options: [
+      "Having exactly six feet or limbs.",
+      "Latin for 'a foot and a half long', referring to very long words.",
+      "Characterized by constant, rhythmic repeating patterns.",
+      "The state of being highly allergic to foot apparel."
+    ],
+    correctAnswerIndex: 1
+  },
+
+  // Synonyms & Antonyms
+  {
+    id: "eng_syn_easy",
+    category: "english_synonyms-antonyms",
+    difficulty: "easy",
+    questionText: "What is a synonym for the word 'jubilant'?",
+    options: ["Melancholy", "Hostile", "Thrilled / Happy", "Apprehensive"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_syn_med",
+    category: "english_synonyms-antonyms",
+    difficulty: "medium",
+    questionText: "What is an antonym for the word 'loquacious'?",
+    options: ["Garrulous", "Taciturn", "Eloquent", "Articulate"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_syn_hard",
+    category: "english_synonyms-antonyms",
+    difficulty: "hard",
+    questionText: "Which of the following is a synonym for 'fastidious'?",
+    options: ["Meticulous", "Indifferent", "Slapdash", "Apathetic"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "eng_syn_impossible",
+    category: "english_synonyms-antonyms",
+    difficulty: "impossible",
+    questionText: "Which pair of words represents a relationship of 'enantiosemy' (contronymy)?",
+    options: [
+      "Flout / Flaunt",
+      "Cleave / Cleave (to split apart vs. to cling together)",
+      "Empathy / Sympathy",
+      "Accept / Except"
+    ],
+    correctAnswerIndex: 1
+  },
+
+  // Tenses
+  {
+    id: "eng_ten_easy",
+    category: "english_tenses",
+    difficulty: "easy",
+    questionText: "Which sentence is written in the Present Perfect tense?",
+    options: [
+      "I write three essays today.",
+      "I will write three essays today.",
+      "I have written three essays today.",
+      "I was writing three essays today."
+    ],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_ten_med",
+    category: "english_tenses",
+    difficulty: "medium",
+    questionText: "Identify the tense used in: 'By next June, she will have been working here for five years.'",
+    options: [
+      "Future Perfect",
+      "Future Continuous",
+      "Future Perfect Continuous",
+      "Future Simple"
+    ],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_ten_hard",
+    category: "english_tenses",
+    difficulty: "hard",
+    questionText: "In conditional sentences, which tense combination is strictly required to form a 'Third Conditional' statement?",
+    options: [
+      "Simple Past in the if-clause, and 'would' + infinitive in the main clause.",
+      "Past Perfect in the if-clause, and 'would have' + past participle in the main clause.",
+      "Present Simple in the if-clause, and Future Simple in the main clause.",
+      "Past Perfect in the if-clause, and 'would' + infinitive in the main clause."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_impossible",
+    category: "english_tenses",
+    difficulty: "impossible",
+    questionText: "Which aspectual distinction is highlighted when contrasting 'I wrote a letter' with 'I was writing a letter' in functional linguistics?",
+    options: [
+      "Habitual vs. Iterative aspect.",
+      "Perfective vs. Imperfective aspect (telic vs. atelic boundary realization).",
+      "Inchoative vs. Cessative transition.",
+      "Static vs. Dynamic thematic assignment."
+    ],
+    correctAnswerIndex: 1
+  },
+
+  // Sentence Correction
+  {
+    id: "eng_snt_easy",
+    category: "english_sentence-correction",
+    difficulty: "easy",
+    questionText: "Which of the following sentences is grammatically correct?",
+    options: [
+      "The dog chased it's tail.",
+      "The dog chased its tail.",
+      "The dog chased its' tail.",
+      "The dog chased its's tail."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_snt_med",
+    category: "english_sentence-correction",
+    difficulty: "medium",
+    questionText: "Correct the dangling modifier in this sentence: 'Walking down the street, the trees were beautiful.'",
+    options: [
+      "Walking down the street, the trees looked beautiful.",
+      "Walking down the street, I saw beautiful trees.",
+      "While walking down the street, the trees were seen by me.",
+      "Dangling down the street, the trees were beautiful."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_snt_hard",
+    category: "english_sentence-correction",
+    difficulty: "hard",
+    questionText: "Which sentence resolves the subjunctive mood correctly?",
+    options: [
+      "I wish I was a bit taller.",
+      "I wish I am a bit taller.",
+      "I wish I were a bit taller.",
+      "I wish I would be a bit taller."
+    ],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_snt_impossible",
+    category: "english_sentence-correction",
+    difficulty: "impossible",
+    questionText: "Which sentence correctly avoids both a split infinitive and a terminal preposition according to prescriptive rules?",
+    options: [
+      "This is the document about which I was instructed to write.",
+      "This is the document I was instructed to write about.",
+      "I was instructed to write about this document immediately.",
+      "This is the document about which I was instructed to immediately write."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // Idioms & Phrases
+  {
+    id: "eng_idm_easy",
+    category: "english_idioms-phrases",
+    difficulty: "easy",
+    questionText: "What does the idiom 'break a leg' mean?",
+    options: ["An angry threat", "A severe medical emergency", "Good luck in a performance", "A clumsy dance move"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_idm_med",
+    category: "english_idioms-phrases",
+    difficulty: "medium",
+    questionText: "What is the meaning of the idiom 'burn the midnight oil'?",
+    options: [
+      "To waste expensive resources.",
+      "To study or work late into the night.",
+      "To cause an accidental structure fire.",
+      "To wake up early before sunrise."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_idm_hard",
+    category: "english_idioms-phrases",
+    difficulty: "hard",
+    questionText: "What is the origin and meaning of 'to bite the bullet'?",
+    options: [
+      "To purchase munitions; originating from colonial military procurement.",
+      "To endure a painful situation with courage; originating from soldiers biting lead bullets during surgery.",
+      "To make a sudden reckless decision; originating from duels.",
+      "To be severely scolded; originating from targeting practice."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_idm_impossible",
+    category: "english_idioms-phrases",
+    difficulty: "impossible",
+    questionText: "What is the historic reference and meaning of 'to read the Riot Act'?",
+    options: [
+      "To recite political theory; originating from the French Revolution.",
+      "To issue a final severe warning to disperse; originating from a British Act read to unlawful assemblies in 1715.",
+      "To perform theater; originating from early Shakespearean protests.",
+      "To document labor disputes; originating from US labor unionization."
+    ],
+    correctAnswerIndex: 1
+  },
+
+  // Reading Comprehension
+  {
+    id: "eng_rdg_easy",
+    category: "english_reading-comprehension",
+    difficulty: "easy",
+    questionText: "In reading comprehension, what is the primary purpose of a 'topic sentence' in a paragraph?",
+    options: [
+      "To provide a concluding rhetorical question.",
+      "To state the main idea of the paragraph.",
+      "To list all supporting bibliography citations.",
+      "To transition to an unrelated subject."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_rdg_med",
+    category: "english_reading-comprehension",
+    difficulty: "medium",
+    questionText: "What is the difference between an 'inference' and a 'direct statement' in a text?",
+    options: [
+      "An inference is a logical conclusion drawn from evidence, whereas a direct statement is explicitly written.",
+      "An inference is always false, whereas direct statements are always true.",
+      "Inferences are only used in poetry; direct statements are used in science.",
+      "Direct statements are subjective; inferences are objective facts."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "eng_rdg_hard",
+    category: "english_reading-comprehension",
+    difficulty: "hard",
+    questionText: "In literary analysis, which of the following terms describes the final resolution of a complex plot or mystery in a drama?",
+    options: ["Exposition", "Climax", "Denouement", "Anagnorisis"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_rdg_impossible",
+    category: "english_reading-comprehension",
+    difficulty: "impossible",
+    questionText: "In literary criticism, which hermeneutic school focuses on the 'intentional fallacy' to assert that an author's intent cannot define a text's meaning?",
+    options: [
+      "Reader-Response Criticism",
+      "New Criticism",
+      "Marxist Literary Theory",
+      "Psychoanalytic Criticism"
+    ],
+    correctAnswerIndex: 1
   }
 ];

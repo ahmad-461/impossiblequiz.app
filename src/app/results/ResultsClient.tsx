@@ -55,6 +55,48 @@ const formatCategoryName = (id: string): string => {
     return `Programming: ${formattedLang} (${formattedDiff})`;
   }
 
+  if (id.startsWith("business_")) {
+    const parts = id.split("_");
+    const subRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const subMapping: Record<string, string> = {
+      marketing: "Marketing",
+      finance: "Finance",
+      accounting: "Accounting",
+      entrepreneurship: "Entrepreneurship",
+      management: "Management",
+      economics: "Economics",
+      "business-strategy": "Business Strategy",
+    };
+
+    const formattedSub = subMapping[subRaw.toLowerCase()] || subRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    return `Business: ${formattedSub} (${formattedDiff})`;
+  }
+
+  if (id.startsWith("english_")) {
+    const parts = id.split("_");
+    const subRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const subMapping: Record<string, string> = {
+      grammar: "Grammar",
+      vocabulary: "Vocabulary",
+      "synonyms-antonyms": "Synonyms & Antonyms",
+      tenses: "Tenses",
+      "sentence-correction": "Sentence Correction",
+      "idioms-phrases": "Idioms & Phrases",
+      "reading-comprehension": "Reading Comprehension",
+    };
+
+    const formattedSub = subMapping[subRaw.toLowerCase()] || subRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    return `English: ${formattedSub} (${formattedDiff})`;
+  }
+
   const categoryLabels: Record<string, string> = {
     programming: "Programming // SYS.LANG",
     "logic-algorithms": "Logic/Algorithms // ALG.COMP",
@@ -115,7 +157,12 @@ export default function ResultsClient() {
 
     // Sanitize Category
     let category = pCategory || "programming";
-    if (!KNOWN_CATEGORIES.includes(category) && !category.startsWith("programming_")) {
+    if (
+      !KNOWN_CATEGORIES.includes(category) &&
+      !category.startsWith("programming_") &&
+      !category.startsWith("business_") &&
+      !category.startsWith("english_")
+    ) {
       category = "programming";
     }
 
@@ -470,6 +517,10 @@ Link: ${shareUrl}`;
           href={
             activeResult.category.startsWith("programming_")
               ? `/categories/programming/${activeResult.category.split("_")[1] || "python"}/difficulty`
+              : activeResult.category.startsWith("business_")
+              ? `/categories/business/${activeResult.category.split("_")[1] || "marketing"}/difficulty`
+              : activeResult.category.startsWith("english_")
+              ? `/categories/english/${activeResult.category.split("_")[1] || "grammar"}/difficulty`
               : "/categories"
           }
           className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet font-display"

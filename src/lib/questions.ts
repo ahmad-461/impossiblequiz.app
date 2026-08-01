@@ -149,6 +149,163 @@ export const staticQuestions: Question[] = [
     ],
     correctAnswerIndex: 0
   },
+  // Python - Additional Easy
+  {
+    id: "prog_py_easy_2",
+    category: "programming_python",
+    difficulty: "easy",
+    questionText: "What is the correct way to write a single-line comment in Python?",
+    options: ["// This is a comment", "# This is a comment", "/* This is a comment */", "<!-- This is a comment -->"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_py_easy_3",
+    category: "programming_python",
+    difficulty: "easy",
+    questionText: "Which of the following is NOT a valid variable name in Python?",
+    options: ["my_var", "_myvar", "my-var", "myVar"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "prog_py_easy_4",
+    category: "programming_python",
+    difficulty: "easy",
+    questionText: "What is the output of print(3 * 'A') in Python?",
+    options: ["9", "AAA", "A A A", "TypeError"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_py_easy_5",
+    category: "programming_python",
+    difficulty: "easy",
+    questionText: "Which of the following data types is immutable in Python?",
+    options: ["list", "dict", "set", "tuple"],
+    correctAnswerIndex: 3
+  },
+  // Python - Additional Medium
+  {
+    id: "prog_py_med_2",
+    category: "programming_python",
+    difficulty: "medium",
+    questionText: "What is the correct syntax for checking if key exists in dictionary 'd'?",
+    options: ["d.has_key(key)", "key in d", "d.contains(key)", "key exists d"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_py_med_3",
+    category: "programming_python",
+    difficulty: "medium",
+    questionText: "What is the output of print(type(lambda x: x)) in Python?",
+    options: ["<class 'function'>", "<class 'lambda'>", "<class 'object'>", "<class 'procedure'>"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_py_med_4",
+    category: "programming_python",
+    difficulty: "medium",
+    questionText: "Which of the following list operations has O(1) average time complexity?",
+    options: ["pop(0)", "insert(0, item)", "append(item)", "remove(item)"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "prog_py_med_5",
+    category: "programming_python",
+    difficulty: "medium",
+    questionText: "What does the expression 2 ** 3 ** 2 evaluate to in Python?",
+    options: ["64", "512", "12", "4096"],
+    correctAnswerIndex: 1
+  },
+  // Python - Additional Hard
+  {
+    id: "prog_py_hard_2",
+    category: "programming_python",
+    difficulty: "hard",
+    questionText: "In Python, what is the key difference between '__str__' and '__repr__'?",
+    options: [
+      "__str__ is for machine debugging; __repr__ is for user-friendly printing.",
+      "__str__ is for user-friendly printing; __repr__ is for developer/unambiguous representation.",
+      "__str__ works only on custom classes; __repr__ only works on built-in types.",
+      "There is no difference; they are exact aliases."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_py_hard_3",
+    category: "programming_python",
+    difficulty: "hard",
+    questionText: "What happens when you modify a list that is used as a default argument in a Python function?",
+    options: [
+      "The default list is re-created on each function invocation.",
+      "The modifications persist across consecutive function calls.",
+      "Python raises a MutabilityException.",
+      "The modification is only visible inside the local namespace of that specific call."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_py_hard_4",
+    category: "programming_python",
+    difficulty: "hard",
+    questionText: "What is the output of print(isinstance(True, int)) in Python?",
+    options: ["True", "False", "TypeError", "None"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_py_hard_5",
+    category: "programming_python",
+    difficulty: "hard",
+    questionText: "In Python, which metaclass method is called first when constructing a new class definition?",
+    options: ["__init__", "__new__", "__prepare__", "__call__"],
+    correctAnswerIndex: 2
+  },
+  // Python - Additional Impossible
+  {
+    id: "prog_py_impossible_2",
+    category: "programming_python",
+    difficulty: "impossible",
+    questionText: "How does Python's dictionary implementation handle hash collisions in CPython 3.8+?",
+    options: [
+      "By using quadratic probing on a compact index array.",
+      "By using linear chaining with Red-Black Trees.",
+      "By using pseudo-random open addressing with a perturbation formula.",
+      "By re-hashing with SHA-256 and shifting bits."
+    ],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "prog_py_impossible_3",
+    category: "programming_python",
+    difficulty: "impossible",
+    questionText: "Under CPython's garbage collection, which generation is immune to cyclical garbage collection sweeps unless a threshold is breached?",
+    options: [
+      "Generation 0",
+      "Generation 1",
+      "Generation 2",
+      "No generation is immune; they are all checked synchronously."
+    ],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "prog_py_impossible_4",
+    category: "programming_python",
+    difficulty: "impossible",
+    questionText: "What is the role of the co_consts attribute on a Python function object?",
+    options: [
+      "It stores the compiled native C code pointers of the module.",
+      "It stores all constant literals used inside the function's bytecode.",
+      "It prevents local variables from being garbage collected.",
+      "It tracks the cryptographic hash of the execution context."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_py_impossible_5",
+    category: "programming_python",
+    difficulty: "impossible",
+    questionText: "In Python's class descriptor protocol, which method is invoked if you attempt to access a missing attribute on an object?",
+    options: ["__getattribute__", "__getattr__", "__getitem__", "__get__"],
+    correctAnswerIndex: 1
+  },
 
   // Java
   {
@@ -1021,6 +1178,188 @@ export const staticQuestions: Question[] = [
     ],
     correctAnswerIndex: 1
   },
+  // Marketing - Additional Easy
+  {
+    id: "bus_mkt_easy_2",
+    category: "business_marketing",
+    difficulty: "easy",
+    questionText: "What is the main focus of B2B marketing?",
+    options: ["Individual consumers", "Businesses and organizations", "Non-profit charities", "Government agencies only"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_easy_3",
+    category: "business_marketing",
+    difficulty: "easy",
+    questionText: "What does SEO stand for in digital marketing?",
+    options: ["Social Engagement Optimization", "Search Engine Optimization", "Systematic Email Outreach", "Sales Enablement Organization"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_easy_4",
+    category: "business_marketing",
+    difficulty: "easy",
+    questionText: "Which social platform is primarily focused on professional networking and B2B marketing?",
+    options: ["Instagram", "LinkedIn", "TikTok", "Pinterest"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_easy_5",
+    category: "business_marketing",
+    difficulty: "easy",
+    questionText: "Which of the following is an example of an outbound marketing tactic?",
+    options: ["Blogging", "SEO", "Cold TV commercials", "Opt-in email newsletters"],
+    correctAnswerIndex: 2
+  },
+  // Marketing - Additional Medium
+  {
+    id: "bus_mkt_med_2",
+    category: "business_marketing",
+    difficulty: "medium",
+    questionText: "What is 'A/B testing' in digital marketing?",
+    options: [
+      "Testing two different price points of a product over 5 years.",
+      "Comparing two versions of a webpage to see which performs better.",
+      "Surveying children vs. elderly cohorts.",
+      "Auditing accounting books for marketing compliance."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_med_3",
+    category: "business_marketing",
+    difficulty: "medium",
+    questionText: "What is a 'bounce rate' in web analytics?",
+    options: [
+      "The speed at which a user scrolls down a page.",
+      "The percentage of visitors who leave after viewing only one page.",
+      "The rate of emails returned due to incorrect addresses.",
+      "The frequency of product returns."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_med_4",
+    category: "business_marketing",
+    difficulty: "medium",
+    questionText: "What marketing framework uses the segments: Geographical, Demographic, Psychographic, and Behavioral?",
+    options: ["Porter's Five Forces", "Market Segmentation", "SWOT Analysis", "Ansoff Matrix"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_med_5",
+    category: "business_marketing",
+    difficulty: "medium",
+    questionText: "What does 'CTR' stand for, and how is it calculated?",
+    options: [
+      "Cost To Run; Campaign cost / duration.",
+      "Click-Through Rate; Clicks / Impressions.",
+      "Conversion Transfer Ratio; Conversions / Visits.",
+      "Customer Tracking Rate; Customers / Sales."
+    ],
+    correctAnswerIndex: 1
+  },
+  // Marketing - Additional Hard
+  {
+    id: "bus_mkt_hard_2",
+    category: "business_marketing",
+    difficulty: "hard",
+    questionText: "In brand positioning, what is a 'Points-of-Parity' (POP)?",
+    options: [
+      "Attributes that are unique to the brand to differentiate from competitors.",
+      "Associations that are not necessarily unique to the brand but shared with other brands.",
+      "Financial metrics measuring advertising budget equity.",
+      "Legal agreements between competing brands."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_hard_3",
+    category: "business_marketing",
+    difficulty: "hard",
+    questionText: "What is 'native advertising'?",
+    options: [
+      "Advertisements designed only for indigenous regions.",
+      "Paid ads that match the look, feel, and function of the media format where they appear.",
+      "Large physical billboards placed in historic landmarks.",
+      "Unsolicited spam messages sent via text."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_hard_4",
+    category: "business_marketing",
+    difficulty: "hard",
+    questionText: "Under the Theory of Planned Behavior, what are the three main constructs that dictate behavioral intentions?",
+    options: [
+      "Price, Product, Promotion",
+      "Attitude, Subjective Norm, and Perceived Behavioral Control",
+      "Awareness, Consideration, Purchase",
+      "Demographics, Psychographics, Geographics"
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_hard_5",
+    category: "business_marketing",
+    difficulty: "hard",
+    questionText: "What is the primary difference between Transactional Marketing and Relationship Marketing?",
+    options: [
+      "Transactional focuses on long-term value; Relationship focuses on individual sales.",
+      "Transactional focuses on immediate sales; Relationship focuses on long-term customer retention.",
+      "Transactional is digital; Relationship is face-to-face only.",
+      "There is no theoretical distinction."
+    ],
+    correctAnswerIndex: 1
+  },
+  // Marketing - Additional Impossible
+  {
+    id: "bus_mkt_impossible_2",
+    category: "business_marketing",
+    difficulty: "impossible",
+    questionText: "What is the mathematical definition of Customer Lifetime Value (LTV) using Cohort Retention Rates?",
+    options: [
+      "LTV = Average Order Value * Annual Purchase Frequency.",
+      "LTV = (Margin * Retention Rate) / (1 + Discount Rate - Retention Rate).",
+      "LTV = Revenue / Acquisition Cost.",
+      "LTV = Churn Rate * Net Promoter Score."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_impossible_3",
+    category: "business_marketing",
+    difficulty: "impossible",
+    questionText: "In consumer research, how is the 'Double Jeopardy' empirical law defined for brand metrics?",
+    options: [
+      "Brands with low market share have both fewer buyers and lower brand loyalty.",
+      "Highly-priced brands face twice the regulatory risk.",
+      "A brand loses twice its market value if it fails a recall.",
+      "Advertising campaigns have zero conversion value after two repeats."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "bus_mkt_impossible_4",
+    category: "business_marketing",
+    difficulty: "impossible",
+    questionText: "Which psychological heuristic did Robert Cialdini identify as being triggered when a brand displays 'As seen on TV' or 'Expert approved'?",
+    options: ["Scarcity", "Authority", "Social Proof", "Reciprocity"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "bus_mkt_impossible_5",
+    category: "business_marketing",
+    difficulty: "impossible",
+    questionText: "What is the primary strategic implication of the 'Alzaher-Veblen' demand curve for luxury goods?",
+    options: [
+      "Demand becomes infinitely elastic at high price thresholds.",
+      "An increase in price increases the perceived status and demand of the product, defying standard demand laws.",
+      "Lowering prices increases conversion exponentially.",
+      "Veblen goods cannot be sold in online marketplaces due to distribution constraints."
+    ],
+    correctAnswerIndex: 1
+  },
 
   // Finance
   {
@@ -1345,6 +1684,173 @@ export const staticQuestions: Question[] = [
     ],
     correctAnswerIndex: 0
   },
+  // Grammar - Additional Easy
+  {
+    id: "eng_grm_easy_2",
+    category: "english_grammar",
+    difficulty: "easy",
+    questionText: "Which of the following is an adjective?",
+    options: ["Run", "Quickly", "Beautiful", "Happiness"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_grm_easy_3",
+    category: "english_grammar",
+    difficulty: "easy",
+    questionText: "What is the plural form of the word 'child'?",
+    options: ["childs", "childrens", "children", "childes"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_grm_easy_4",
+    category: "english_grammar",
+    difficulty: "easy",
+    questionText: "Identify the subject in the sentence: 'The hungry cat chased the mouse.'",
+    options: ["The hungry cat", "chased", "the mouse", "hungry"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "eng_grm_easy_5",
+    category: "english_grammar",
+    difficulty: "easy",
+    questionText: "Choose the correct preposition: 'She is interested _____ learning music.'",
+    options: ["on", "at", "in", "for"],
+    correctAnswerIndex: 2
+  },
+  // Grammar - Additional Medium
+  {
+    id: "eng_grm_med_2",
+    category: "english_grammar",
+    difficulty: "medium",
+    questionText: "Which sentence contains a relative clause?",
+    options: [
+      "I wanted to buy a new car.",
+      "The man who called you is my uncle.",
+      "She left early because she was tired.",
+      "Although it was raining, we went out."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_med_3",
+    category: "english_grammar",
+    difficulty: "medium",
+    questionText: "What is the function of the word 'because' in: 'She stayed home because she was sick'?",
+    options: ["Preposition", "Subordinating conjunction", "Coordinating conjunction", "Adverb"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_med_4",
+    category: "english_grammar",
+    difficulty: "medium",
+    questionText: "Which of the following is a passive voice sentence?",
+    options: [
+      "The chef cooked a delicious meal.",
+      "A delicious meal was cooked by the chef.",
+      "The chef has cooked a delicious meal.",
+      "Cooking a delicious meal is fun."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_med_5",
+    category: "english_grammar",
+    difficulty: "medium",
+    questionText: "Identify the direct object in: 'He gave his sister a beautiful necklace.'",
+    options: ["He", "his sister", "a beautiful necklace", "gave"],
+    correctAnswerIndex: 2
+  },
+  // Grammar - Additional Hard
+  {
+    id: "eng_grm_hard_2",
+    category: "english_grammar",
+    difficulty: "hard",
+    questionText: "What is a 'comma splice' error?",
+    options: [
+      "Using too many commas in a list.",
+      "Joining two independent clauses with only a comma and no coordinating conjunction.",
+      "Failing to put a comma after an introductory phrase.",
+      "Using a comma instead of an apostrophe."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_hard_3",
+    category: "english_grammar",
+    difficulty: "hard",
+    questionText: "Identify the grammatical construct of the underlined word: 'Swimming' is my favorite activity.",
+    options: ["Participle", "Gerund", "Infinitive", "Preposition"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_hard_4",
+    category: "english_grammar",
+    difficulty: "hard",
+    questionText: "Which of the following sentences contains a correlative conjunction pair?",
+    options: [
+      "Although she was tired, she kept working.",
+      "Neither the students nor the teacher was prepared.",
+      "I like coffee, but I prefer tea.",
+      "Since you are here, we can start."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_hard_5",
+    category: "english_grammar",
+    difficulty: "hard",
+    questionText: "What is the correct subjective pronoun to use in: 'It was _______ who called you'?",
+    options: ["him", "he", "his", "himself"],
+    correctAnswerIndex: 1
+  },
+  // Grammar - Additional Impossible
+  {
+    id: "eng_grm_impossible_2",
+    category: "english_grammar",
+    difficulty: "impossible",
+    questionText: "In generative grammar, what does 'C-command' primarily describe?",
+    options: [
+      "The phonetic spelling of complement clauses.",
+      "A structural relation between nodes in a syntax tree.",
+      "The gender agreement of collective nouns.",
+      "The historical shift of consonant sounds."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_impossible_3",
+    category: "english_grammar",
+    difficulty: "impossible",
+    questionText: "Which sentence demonstrates the syntactic phenomenon of 'pied-piping'?",
+    options: [
+      "Which book did you read?",
+      "To whom did you send the letter?",
+      "Who did you go to the party with?",
+      "What was that about?"
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_impossible_4",
+    category: "english_grammar",
+    difficulty: "impossible",
+    questionText: "What semantic/syntactic constraint prevents sentences like 'The table felt sad' in formal linguistics?",
+    options: [
+      "The subcategorization frame",
+      "Selectional restrictions",
+      "Theta-role assignment limits",
+      "The Empty Category Principle"
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_grm_impossible_5",
+    category: "english_grammar",
+    difficulty: "impossible",
+    questionText: "In English syntax, which of the following is a 'negative polarity item' (NPI)?",
+    options: ["Someone", "Any", "Not", "Never"],
+    correctAnswerIndex: 1
+  },
 
   // Vocabulary
   {
@@ -1486,6 +1992,158 @@ export const staticQuestions: Question[] = [
       "Static vs. Dynamic thematic assignment."
     ],
     correctAnswerIndex: 1
+  },
+  // Tenses - Additional Easy
+  {
+    id: "eng_ten_easy_2",
+    category: "english_tenses",
+    difficulty: "easy",
+    questionText: "Which of the following is written in the Past Simple tense?",
+    options: ["I am writing.", "I wrote.", "I have written.", "I will write."],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_easy_3",
+    category: "english_tenses",
+    difficulty: "easy",
+    questionText: "Identify the tense in: 'They are playing soccer.'",
+    options: ["Present Simple", "Present Continuous", "Past Continuous", "Present Perfect"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_easy_4",
+    category: "english_tenses",
+    difficulty: "easy",
+    questionText: "Fill in the blank: 'Yesterday, she ______ to the store.'",
+    options: ["go", "goes", "went", "gone"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_ten_easy_5",
+    category: "english_tenses",
+    difficulty: "easy",
+    questionText: "Which of the following sentences is in the Future Simple tense?",
+    options: ["I was running.", "I will run.", "I have run.", "I run."],
+    correctAnswerIndex: 1
+  },
+  // Tenses - Additional Medium
+  {
+    id: "eng_ten_med_2",
+    category: "english_tenses",
+    difficulty: "medium",
+    questionText: "Which sentence is in the Past Perfect tense?",
+    options: ["She lived here.", "She has lived here.", "She had lived here.", "She was living here."],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "eng_ten_med_3",
+    category: "english_tenses",
+    difficulty: "medium",
+    questionText: "What tense is used to describe an action that started in the past and is still continuing now?",
+    options: ["Past Simple", "Present Perfect Continuous", "Future Continuous", "Past Perfect"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_med_4",
+    category: "english_tenses",
+    difficulty: "medium",
+    questionText: "Identify the tense: 'I will have finished my project by tomorrow.'",
+    options: ["Future Continuous", "Future Perfect", "Future Simple", "Present Perfect"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_med_5",
+    category: "english_tenses",
+    difficulty: "medium",
+    questionText: "When do we use the Past Continuous tense?",
+    options: [
+      "To show a completed past habit.",
+      "To describe an ongoing action in the past that was interrupted.",
+      "To list permanent scientific facts.",
+      "To schedule upcoming meetings."
+    ],
+    correctAnswerIndex: 1
+  },
+  // Tenses - Additional Hard
+  {
+    id: "eng_ten_hard_2",
+    category: "english_tenses",
+    difficulty: "hard",
+    questionText: "In a 'Second Conditional' sentence, which tenses are used in the if-clause and main clause?",
+    options: ["Present Simple, Future Simple", "Simple Past, would + infinitive", "Past Perfect, would have + past participle", "Present Simple, Imperative"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_hard_3",
+    category: "english_tenses",
+    difficulty: "hard",
+    questionText: "Which sentence uses the present continuous tense to express a fixed future arrangement?",
+    options: ["I am feeling sick today.", "We are meeting the CEO at 10 AM tomorrow.", "Water is boiling on the stove.", "She is constantly talking in class."],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_hard_4",
+    category: "english_tenses",
+    difficulty: "hard",
+    questionText: "Identify the tense and aspect of: 'She had been studying for three hours before she fell asleep.'",
+    options: ["Past Perfect Simple", "Past Perfect Continuous", "Past Continuous", "Present Perfect Continuous"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_hard_5",
+    category: "english_tenses",
+    difficulty: "hard",
+    questionText: "What is the structural difference between 'I have worked here' and 'I have been working here'?",
+    options: [
+      "The former is incorrect English.",
+      "The former focuses on the result/completion, while the latter emphasizes ongoing duration.",
+      "The former is future perfect; the latter is past perfect.",
+      "There is no difference in any context."
+    ],
+    correctAnswerIndex: 1
+  },
+  // Tenses - Additional Impossible
+  {
+    id: "eng_ten_impossible_2",
+    category: "english_tenses",
+    difficulty: "impossible",
+    questionText: "What linguistic concept explains the use of the Present Simple tense in sentences like 'The train leaves at 8 PM tomorrow'?",
+    options: ["The habitative aspect", "The futurate present", "The historical present", "The gnomical aspect"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_impossible_3",
+    category: "english_tenses",
+    difficulty: "impossible",
+    questionText: "In historical linguistics, how does the English 'Preterite-Present' verb category function?",
+    options: [
+      "Verbs whose past tense form has taken on a present tense meaning.",
+      "Verbs that cannot be conjugated in any past form.",
+      "Nouns that function as past participles.",
+      "Auxiliaries that strictly modify passive objects."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "eng_ten_impossible_4",
+    category: "english_tenses",
+    difficulty: "impossible",
+    questionText: "Which tense/aspect structure represents a 'statitival perfect' in early modern English?",
+    options: ["I have done the task.", "I am come.", "I did do it.", "I will have been coming."],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "eng_ten_impossible_5",
+    category: "english_tenses",
+    difficulty: "impossible",
+    questionText: "What semantic feature separates 'We went to Paris' from 'We have been to Paris' according to Reichenbach's tense framework?",
+    options: [
+      "The relationship between Event time, Reference time, and Speech time (E=R<S vs. E<R=S).",
+      "The presence of active transitive verbs.",
+      "The subjunctive syntactic assignment.",
+      "The morphological parsing of continuous modals."
+    ],
+    correctAnswerIndex: 0
   },
 
   // Sentence Correction

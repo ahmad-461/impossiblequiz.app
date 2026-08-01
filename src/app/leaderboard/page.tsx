@@ -18,6 +18,8 @@ interface LeaderboardEntry {
 const SECTORS = [
   { id: "all", label: "ALL SECTORS", tag: "ALL" },
   { id: "programming", label: "PROGRAMMING", tag: "SYS.LANG" },
+  { id: "business", label: "BUSINESS", tag: "BUS.MGMT" },
+  { id: "english", label: "ENGLISH", tag: "ENG.LANG" },
   { id: "logic-algorithms", label: "LOGIC // ALGO", tag: "ALG.COMP" },
   { id: "data-analytics", label: "DATA ANALYTICS", tag: "DAT.SCALE" },
   { id: "computer-science-fundamentals", label: "CS FUNDAMENTALS", tag: "SYS.CORE" },
@@ -56,8 +58,50 @@ const getCategoryLabel = (cat: string): string => {
     return `${formattedLang} (${formattedDiff})`;
   }
 
+  if (cat.startsWith("business_")) {
+    const parts = cat.split("_");
+    const subRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const subMapping: Record<string, string> = {
+      marketing: "Marketing",
+      finance: "Finance",
+      accounting: "Accounting",
+      entrepreneurship: "Entrep.",
+      management: "Mgmt",
+      economics: "Econ",
+      "business-strategy": "Strategy",
+    };
+
+    const formattedSub = subMapping[subRaw.toLowerCase()] || subRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase(); // E, M, H, I
+    return `${formattedSub} (${formattedDiff})`;
+  }
+
+  if (cat.startsWith("english_")) {
+    const parts = cat.split("_");
+    const subRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const subMapping: Record<string, string> = {
+      grammar: "Grammar",
+      vocabulary: "Vocab",
+      "synonyms-antonyms": "Syn/Ant",
+      tenses: "Tenses",
+      "sentence-correction": "Correction",
+      "idioms-phrases": "Idioms",
+      "reading-comprehension": "Compreh.",
+    };
+
+    const formattedSub = subMapping[subRaw.toLowerCase()] || subRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase(); // E, M, H, I
+    return `${formattedSub} (${formattedDiff})`;
+  }
+
   const mapping: Record<string, string> = {
     programming: "SYS.LANG",
+    business: "BUS.MGMT",
+    english: "ENG.LANG",
     "logic-algorithms": "ALG.COMP",
     "data-analytics": "DAT.SCALE",
     "computer-science-fundamentals": "SYS.CORE",
@@ -89,6 +133,10 @@ function LeaderboardContent() {
     if (sessionResult && sessionResult.category) {
       if (sessionResult.category.startsWith("programming_")) {
         setActiveCategory("programming");
+      } else if (sessionResult.category.startsWith("business_")) {
+        setActiveCategory("business");
+      } else if (sessionResult.category.startsWith("english_")) {
+        setActiveCategory("english");
       } else {
         setActiveCategory(sessionResult.category);
       }
@@ -109,7 +157,9 @@ function LeaderboardContent() {
 
       const matchCategory = activeCategory === "all" ||
         sessionCategory === activeCategory ||
-        (activeCategory === "programming" && sessionCategory.startsWith("programming_"));
+        (activeCategory === "programming" && sessionCategory.startsWith("programming_")) ||
+        (activeCategory === "business" && sessionCategory.startsWith("business_")) ||
+        (activeCategory === "english" && sessionCategory.startsWith("english_"));
 
       try {
         let query = supabase.from("leaderboard").select("id, nickname, score, streak, category");
@@ -117,6 +167,10 @@ function LeaderboardContent() {
         if (activeCategory !== "all") {
           if (activeCategory === "programming") {
             query = query.or("category.eq.programming,category.like.programming_%");
+          } else if (activeCategory === "business") {
+            query = query.or("category.eq.business,category.like.business_%");
+          } else if (activeCategory === "english") {
+            query = query.or("category.eq.english,category.like.english_%");
           } else {
             query = query.eq("category", activeCategory);
           }
@@ -170,6 +224,12 @@ function LeaderboardContent() {
           fallbackList = fallbackList.filter((e) => {
             if (activeCategory === "programming") {
               return e.category === "programming" || e.category.startsWith("programming_");
+            }
+            if (activeCategory === "business") {
+              return e.category === "business" || e.category.startsWith("business_");
+            }
+            if (activeCategory === "english") {
+              return e.category === "english" || e.category.startsWith("english_");
             }
             return e.category === activeCategory;
           });

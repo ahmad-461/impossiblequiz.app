@@ -9,6 +9,15 @@ interface GeminiQuestion {
   category: string;
 }
 
+const formatSubcategoryName = (id: string): string => {
+  if (id === "business-strategy") return "Business Strategy";
+  if (id === "synonyms-antonyms") return "Synonyms & Antonyms";
+  if (id === "idioms-phrases") return "Idioms & Phrases";
+  if (id === "reading-comprehension") return "Reading Comprehension";
+  if (id === "sentence-correction") return "Sentence Correction";
+  return id.split("-").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+};
+
 function getFallbackQuestion(
   category: string,
   difficulty: string,
@@ -20,13 +29,14 @@ function getFallbackQuestion(
   let targetDifficulty = difficulty;
 
   // If compound category like programming_rust_impossible or programming_rust_medium
-  if (category.startsWith("programming_")) {
+  if (category.startsWith("programming_") || category.startsWith("business_") || category.startsWith("english_")) {
     const parts = category.split("_");
+    const prefix = parts[0];
     if (parts.length >= 3) {
-      targetCategory = `programming_${parts[1]}`;
+      targetCategory = `${prefix}_${parts[1]}`;
       targetDifficulty = parts[2];
     } else if (parts.length === 2) {
-      targetCategory = category;
+      targetCategory = `${prefix}_${parts[1]}`;
     }
   }
 
@@ -84,7 +94,9 @@ async function callGemini(
   difficulty: string,
   alreadyAskedTexts: string[],
   isBossRound: boolean,
-  language?: string
+  language?: string,
+  subcategory?: string,
+  categoryType?: "programming" | "business" | "english"
 ): Promise<unknown | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -94,22 +106,35 @@ async function callGemini(
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-  const capitalizedLang = language
-    ? language.charAt(0).toUpperCase() + language.slice(1)
-    : "";
-
   let prompt = "";
-  if (language) {
+  if (categoryType === "programming" && language) {
+    const capitalizedLang = language.charAt(0).toUpperCase() + language.slice(1);
     if (difficulty === "impossible") {
       prompt = `Generate ONE extremely complex, deep, and mind-bending multiple-choice quiz question focusing on advanced ${capitalizedLang} mechanics (e.g. compiler internal optimizations, low-level memory layout, esoteric specifications, or highly subtle language features/behaviors). The question must be genuinely "Impossible" and require elite expertise to answer correctly. Ensure the question is specific to ${capitalizedLang}.`;
     } else {
       prompt = `Generate ONE multiple-choice quiz question focusing on the ${capitalizedLang} programming language at '${difficulty}' difficulty. Ensure the concepts tested are highly relevant to ${capitalizedLang}.`;
     }
+  } else if (categoryType === "business" && subcategory) {
+    const capitalizedSub = formatSubcategoryName(subcategory);
+    if (difficulty === "impossible") {
+      prompt = `Generate ONE extremely complex, deep, and master-level multiple-choice quiz question focusing on advanced ${capitalizedSub} concepts, professional case studies, obscure economic or management theories, or highly subtle strategic or regulatory behaviors in Business. The question must be genuinely "Impossible" and require elite business expertise to answer correctly. Ensure the question is specific to ${capitalizedSub}.`;
+    } else {
+      prompt = `Generate ONE multiple-choice quiz question focusing on the business topic '${capitalizedSub}' at '${difficulty}' difficulty. Ensure the concepts tested are highly relevant to ${capitalizedSub}.`;
+    }
+  } else if (categoryType === "english" && subcategory) {
+    const capitalizedSub = formatSubcategoryName(subcategory);
+    if (difficulty === "impossible") {
+      prompt = `Generate ONE extremely complex, advanced, and challenging multiple-choice quiz question focusing on advanced ${capitalizedSub} concepts (e.g. obscure linguistic rules, complex syntax constructions, rare idiomatic usage, or highly subtle reading comprehension and grammatical edge cases). The question must be genuinely "Impossible" and require elite linguistic and English expertise to answer correctly. Ensure the question is specific to ${capitalizedSub}.`;
+    } else {
+      prompt = `Generate ONE multiple-choice quiz question focusing on the English topic '${capitalizedSub}' at '${difficulty}' difficulty. Ensure the concepts tested are highly relevant to ${capitalizedSub}.`;
+    }
   } else {
     prompt = `Generate ONE multiple-choice quiz question for the category '${category}' at '${difficulty}' difficulty.`;
-    if (isBossRound) {
-      prompt = `Generate ONE extremely challenging, advanced, multi-part, or complex Boss Round multiple-choice quiz question for the category '${category}' (difficulty is hard). This is the final Boss Round, so the question must require deep analytical reasoning or deep technical knowledge.`;
-    }
+  }
+
+  if (isBossRound) {
+    const subLabel = subcategory ? formatSubcategoryName(subcategory) : (language ? language : category);
+    prompt = `Generate ONE extremely challenging, advanced, multi-part, or complex Boss Round multiple-choice quiz question for the category '${subLabel}' (difficulty is hard). This is the final Boss Round, so the question must require deep analytical reasoning or deep domain-specific knowledge.`;
   }
 
   prompt += ` Ensure the question has 4 plausible options, and only one correct option.`;
@@ -191,15 +216,17 @@ async function fetchAndValidate(
   difficulty: string,
   alreadyAskedTexts: string[],
   isBossRound: boolean,
-  language?: string
+  language?: string,
+  subcategory?: string,
+  categoryType?: "programming" | "business" | "english"
 ): Promise<GeminiQuestion | null> {
   // Try 1
-  let result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language);
+  let result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language, subcategory, categoryType);
   if (result && isValidQuestion(result)) {
     return result;
   }
   // Try 2 (Retry once)
-  result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language);
+  result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language, subcategory, categoryType);
   if (result && isValidQuestion(result)) {
     return result;
   }
@@ -217,12 +244,15 @@ export async function POST(request: Request) {
       isBossRound = false,
     } = body;
 
-    // Parse language and starting difficulty if it's programming_
+    // Parse language/subcategory and starting difficulty
     let targetCategory = category;
     let targetDifficulty = difficulty;
     let language = "";
+    let subcategory = "";
+    let categoryType: "programming" | "business" | "english" | undefined = undefined;
 
     if (category.startsWith("programming_")) {
+      categoryType = "programming";
       const parts = category.split("_");
       if (parts.length >= 3) {
         language = parts[1];
@@ -232,10 +262,40 @@ export async function POST(request: Request) {
         language = parts[1];
         targetCategory = `programming_${language}`;
       }
+    } else if (category.startsWith("business_")) {
+      categoryType = "business";
+      const parts = category.split("_");
+      if (parts.length >= 3) {
+        subcategory = parts[1];
+        targetDifficulty = parts[2];
+        targetCategory = `business_${subcategory}`;
+      } else if (parts.length === 2) {
+        subcategory = parts[1];
+        targetCategory = `business_${subcategory}`;
+      }
+    } else if (category.startsWith("english_")) {
+      categoryType = "english";
+      const parts = category.split("_");
+      if (parts.length >= 3) {
+        subcategory = parts[1];
+        targetDifficulty = parts[2];
+        targetCategory = `english_${subcategory}`;
+      } else if (parts.length === 2) {
+        subcategory = parts[1];
+        targetCategory = `english_${subcategory}`;
+      }
     }
 
     // Fetch from Gemini and Validate
-    const geminiResult = await fetchAndValidate(targetCategory, targetDifficulty, alreadyAskedTexts, isBossRound, language);
+    const geminiResult = await fetchAndValidate(
+      targetCategory,
+      targetDifficulty,
+      alreadyAskedTexts,
+      isBossRound,
+      language,
+      subcategory,
+      categoryType
+    );
 
     if (geminiResult) {
       // Map Gemini fields to expected Question shape

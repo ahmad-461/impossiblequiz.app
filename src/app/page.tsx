@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import ScrollReveal from "../components/ScrollReveal";
+import { categories } from "../lib/categories";
 
 function DodgingButton({ onCatch }: { onCatch: () => void }) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -261,7 +262,9 @@ export default function Home() {
             {/* Futuristic status items */}
             <ScrollReveal className="mt-12 grid grid-cols-3 gap-8 max-w-lg border-t border-neonViolet/10 pt-8 w-full">
               <div>
-                <div className="text-xl md:text-2xl font-black text-neonCyan font-display">04</div>
+                <div className="text-xl md:text-2xl font-black text-neonCyan font-display">
+                  {String(categories.length).padStart(2, "0")}
+                </div>
                 <div className="text-[9px] uppercase tracking-widest text-textMuted mt-1 font-semibold">Sectors Available</div>
               </div>
               <div>

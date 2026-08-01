@@ -1,7 +1,7 @@
 export interface Question {
   id: string;
-  category: "programming" | "logic-algorithms" | "data-analytics" | "computer-science-fundamentals";
-  difficulty: "easy" | "medium" | "hard";
+  category: string;
+  difficulty: "easy" | "medium" | "hard" | "impossible";
   questionText: string;
   options: string[];
   correctAnswerIndex: number;
@@ -108,6 +108,565 @@ export const staticQuestions: Question[] = [
     ],
     correctAnswerIndex: 2,
     isBossRound: true
+  },
+
+  // ==================== NEW LANGUAGE-SPECIFIC PROGRAMMING QUESTIONS ====================
+  // Python
+  {
+    id: "prog_py_easy",
+    category: "programming_python",
+    difficulty: "easy",
+    questionText: "In Python, which of the following is used to add an item to the end of a list?",
+    options: ["add()", "push()", "append()", "insert()"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "prog_py_med",
+    category: "programming_python",
+    difficulty: "medium",
+    questionText: "What is the result of type((1,)) in Python?",
+    options: ["<class 'int'>", "<class 'tuple'>", "<class 'list'>", "SyntaxError"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_py_hard",
+    category: "programming_python",
+    difficulty: "hard",
+    questionText: "What is the output of bool([]) or bool([0]) in Python?",
+    options: ["False", "True", "TypeError", "0"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_py_impossible",
+    category: "programming_python",
+    difficulty: "impossible",
+    questionText: "Under Python's GIL, what happens to thread execution during blocking memory or socket I/O operations?",
+    options: [
+      "The GIL is released, allowing other threads to run concurrently.",
+      "The entire process freezes until the I/O block is resolved.",
+      "The thread undergoes a hard OS interrupt and is terminated.",
+      "The interpreter duplicates the stack using an implicit fork."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // Java
+  {
+    id: "prog_java_easy",
+    category: "programming_java",
+    difficulty: "easy",
+    questionText: "Which keyword is used to prevent a class from being inherited in Java?",
+    options: ["static", "abstract", "final", "private"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "prog_java_med",
+    category: "programming_java",
+    difficulty: "medium",
+    questionText: "In Java, what is the size of a standard 'int' primitive data type in bits?",
+    options: ["8", "16", "32", "64"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "prog_java_hard",
+    category: "programming_java",
+    difficulty: "hard",
+    questionText: "What is the primary difference between HashMap and ConcurrentHashMap in Java?",
+    options: [
+      "ConcurrentHashMap is immutable.",
+      "ConcurrentHashMap allows concurrent read/write without locking the entire map.",
+      "HashMap throws a checked SQLException during multi-threaded access.",
+      "HashMap automatically caches historical key garbage collection traces."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_java_impossible",
+    category: "programming_java",
+    difficulty: "impossible",
+    questionText: "How does the Java Virtual Machine (JVM) handle biased locking optimizations during safepoint synchronization?",
+    options: [
+      "It revokes biased locks of all threads synchronously, causing minor GC pause overheads.",
+      "It converts biased locks to lock-free spin-locks using hardware-level transactional memory.",
+      "It promotes biased locks immediately to a global monitor on the first thread-local execution cycle.",
+      "It delegates the task to the host OS kernel scheduler via pthread_mutex_t structures."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // JavaScript
+  {
+    id: "prog_js_easy",
+    category: "programming_javascript",
+    difficulty: "easy",
+    questionText: "Which company originally developed JavaScript in 1995?",
+    options: ["Microsoft", "Netscape", "Sun Microsystems", "Oracle"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_js_med",
+    category: "programming_javascript",
+    difficulty: "medium",
+    questionText: "What is the output of [] == ![] in JavaScript?",
+    options: ["true", "false", "undefined", "TypeError"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_js_hard",
+    category: "programming_javascript",
+    difficulty: "hard",
+    questionText: "What is the purpose of the 'WeakMap' object in JavaScript?",
+    options: [
+      "It allows garbage collecting keys (which must be objects) if they are not referenced elsewhere.",
+      "It prevents prototype inheritance of stored primitives.",
+      "It performs lazy evaluations of keys using a built-in cryptographic seed.",
+      "It keeps references to properties of objects to speed up array filtering."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_js_impossible",
+    category: "programming_javascript",
+    difficulty: "impossible",
+    questionText: "In V8, what is the primary consequence of changing an object's prototype link (__proto__) after its instantiation?",
+    options: [
+      "It triggers transition path de-optimization and completely invalidates its Hidden Class (Shape).",
+      "It compiles the modified prototype into a global system buffer, boosting function execution.",
+      "The engine throws an irreversible ExecutionContextError and halts current events.",
+      "It invokes an asynchronous background sweep to clone all properties onto the heap."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // C
+  {
+    id: "prog_c_easy",
+    category: "programming_c",
+    difficulty: "easy",
+    questionText: "In C, which header file must be included to use the standard printf function?",
+    options: ["<stdlib.h>", "<conio.h>", "<stdio.h>", "<string.h>"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "prog_c_med",
+    category: "programming_c",
+    difficulty: "medium",
+    questionText: "What does the sizeof operator return for a pointer to an integer on a 64-bit architecture?",
+    options: ["2", "4", "8", "16"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "prog_c_hard",
+    category: "programming_c",
+    difficulty: "hard",
+    questionText: "Which of the following causes undefined behavior in standard C99?",
+    options: [
+      "Using a union to type-pun a float to an integer.",
+      "Modifying a string literal in-place.",
+      "Declaring a variable length array of size 100 on the stack.",
+      "Casting a double pointer to a void pointer."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_c_impossible",
+    category: "programming_c",
+    difficulty: "impossible",
+    questionText: "What does the 'restrict' pointer qualifier guarantee to the compiler optimizer in C99?",
+    options: [
+      "The pointed-to memory is not aliased by any other pointer within that function scope.",
+      "The value of the variable is stored strictly in a CPU register rather than system RAM.",
+      "Accessing the pointer requires thread-safe mutex protection from the runtime library.",
+      "The pointer cannot undergo pointer-arithmetic modifications during iterations."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // C++
+  {
+    id: "prog_cpp_easy",
+    category: "programming_cpp",
+    difficulty: "easy",
+    questionText: "Which C++ keyword is used to allocate memory dynamically on the heap?",
+    options: ["malloc", "new", "alloc", "create"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_cpp_med",
+    category: "programming_cpp",
+    difficulty: "medium",
+    questionText: "What is a 'vtable' (virtual method table) primarily used for in C++?",
+    options: [
+      "To store inline class configuration templates.",
+      "To resolve virtual function calls dynamically at runtime.",
+      "To map member variable positions during virtual block alignment.",
+      "To automatically release standard stack pointers at block scopes."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_cpp_hard",
+    category: "programming_cpp",
+    difficulty: "hard",
+    questionText: "In C++11, what does std::move actually do?",
+    options: [
+      "It actively copies heap blocks to a new thread safety boundary.",
+      "It performs a static_cast to an rvalue reference, enabling move semantics.",
+      "It frees the source pointer immediately to prevent memory leaks.",
+      "It forces the CPU to execute a thread switch operation."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_cpp_impossible",
+    category: "programming_cpp",
+    difficulty: "impossible",
+    questionText: "Under the C++ One Definition Rule (ODR), what happens if a non-inline template function is defined identically in two different translation units?",
+    options: [
+      "It is resolved by the linker without error, but violating ODR otherwise causes undefined behavior.",
+      "The compiler halts compilation immediately with a redefinition syntax error.",
+      "The standard library duplicates the symbol using randomized runtime namespaces.",
+      "The virtual destructor invokes a double-free on heap-allocated objects."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // C#
+  {
+    id: "prog_csharp_easy",
+    category: "programming_csharp",
+    difficulty: "easy",
+    questionText: "Which of the following is the ultimate base class for all types in the C# type system?",
+    options: ["System.Type", "System.Object", "System.ValueType", "System.String"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_csharp_med",
+    category: "programming_csharp",
+    difficulty: "medium",
+    questionText: "What does the using statement in C# guarantee for an object that implements IDisposable?",
+    options: [
+      "It runs the object in an isolated sandboxed thread context.",
+      "The Dispose method is called automatically even if an exception occurs.",
+      "The object is serialized and saved in local app settings.",
+      "It converts the class to an immutable struct."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_csharp_hard",
+    category: "programming_csharp",
+    difficulty: "hard",
+    questionText: "What is the key functional difference between IEnumerable and IQueryable in C#?",
+    options: [
+      "IEnumerable performs in-memory filtering; IQueryable executes queries provider-side using Expression Trees.",
+      "IEnumerable supports asynchronous streaming; IQueryable is strictly synchronous.",
+      "IEnumerable is exclusive to local files; IQueryable is exclusive to SQLite.",
+      "IQueryable bypasses garbage collection tracking entirely."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_csharp_impossible",
+    category: "programming_csharp",
+    difficulty: "impossible",
+    questionText: "How does the .NET Garbage Collector (GC) optimize memory allocation in Generation 0?",
+    options: [
+      "By using a bump pointer on a thread-local allocation context (TLAC) without global lock overhead.",
+      "By copying objects synchronously to the Large Object Heap (LOH) on every thread switch.",
+      "By executing reference counting sweeps on the CPU's background vector registers.",
+      "By writing object layout structures to active system swap space."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // PHP
+  {
+    id: "prog_php_easy",
+    category: "programming_php",
+    difficulty: "easy",
+    questionText: "Which character is used to denote a variable prefix in PHP?",
+    options: ["#", "$", "@", "&"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_php_med",
+    category: "programming_php",
+    difficulty: "medium",
+    questionText: "What is the difference between == and === operators in PHP?",
+    options: [
+      "=== compares values after type coercion; == checks identical reference positions.",
+      "=== compares both value and data type, while == performs type coercion.",
+      "== is strictly for strings; === is strictly for arrays and objects.",
+      "There is no difference since PHP 7.4."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_php_hard",
+    category: "programming_php",
+    difficulty: "hard",
+    questionText: "What is the purpose of the 'opcache' extension in PHP?",
+    options: [
+      "It stores precompiled script bytecode in shared memory, eliminating file parsing overhead.",
+      "It compresses HTTP responses before transmitting them to the server.",
+      "It replicates database query results across multiple worker clusters.",
+      "It enforces strict typing limits on standard library parameters."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_php_impossible",
+    category: "programming_php",
+    difficulty: "impossible",
+    questionText: "How does PHP 8's Just-In-Time (JIT) compiler manage instruction generation for hot execution paths?",
+    options: [
+      "By compiling trace-based or function-based VM bytecode directly into native x86/ARM machine code.",
+      "By delegating compilation processes to the host web server's CGI daemon.",
+      "By translating arrays to WebAssembly files on client-side requests.",
+      "By locking the global VM registers during complex mathematical loops."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // TypeScript
+  {
+    id: "prog_typescript_easy",
+    category: "programming_typescript",
+    difficulty: "easy",
+    questionText: "Which command-line compiler command is used to compile TypeScript projects?",
+    options: ["ts-node", "tsc", "compile-ts", "typescript"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_typescript_med",
+    category: "programming_typescript",
+    difficulty: "medium",
+    questionText: "What is a key difference between a TypeScript 'interface' and a 'type' alias?",
+    options: [
+      "Interfaces can be extended or merged via declaration merging, whereas type aliases cannot.",
+      "Type aliases support inheritance via 'extends'; interfaces do not.",
+      "Interfaces are preserved as runtime classes; type aliases are compiled away.",
+      "Type aliases can only contain primitive data types."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_typescript_hard",
+    category: "programming_typescript",
+    difficulty: "hard",
+    questionText: "What does the keyof operator do in TypeScript?",
+    options: [
+      "It returns a string array of an object's keys at runtime.",
+      "It produces a union type of all known keys of an object type at compile time.",
+      "It unlocks read-only properties of a compiled interface.",
+      "It checks if a specified string key exists inside a Map object."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_typescript_impossible",
+    category: "programming_typescript",
+    difficulty: "impossible",
+    questionText: "What is the fundamental mechanism behind TypeScript's structural typing assignability for contra-variant function arguments?",
+    options: [
+      "Arguments are checked in reverse order (contravariant), ensuring safer parameter substitution.",
+      "Function arguments undergo strict runtime checking via high-order proxy decorators.",
+      "It forces any inherited argument type to be cast to a union type of all subclass fields.",
+      "It compiles arguments into inline tuples to bypass lexical scope validations."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // Go
+  {
+    id: "prog_go_easy",
+    category: "programming_go",
+    difficulty: "easy",
+    questionText: "Which keyword is used to initiate a concurrent goroutine in Go?",
+    options: ["goroutine", "go", "thread", "spawn"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_go_med",
+    category: "programming_go",
+    difficulty: "medium",
+    questionText: "In Go, what is the default zero-value of an uninitialized interface?",
+    options: ["nil", "undefined", "empty struct", "false"],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_go_hard",
+    category: "programming_go",
+    difficulty: "hard",
+    questionText: "What is the primary difference between a Go 'channel' and a 'mutex'?",
+    options: [
+      "Channels communicate by sharing memory; mutexes share memory by locking access.",
+      "Channels require manual garbage collection; mutexes are self-destructing.",
+      "Mutexes only work in the main goroutine; channels work across threads.",
+      "Channels are exclusive to network sockets."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_go_impossible",
+    category: "programming_go",
+    difficulty: "impossible",
+    questionText: "How does the Go runtime scheduler (GMP model) handle system calls that block a goroutine?",
+    options: [
+      "It detaches the OS thread (M) from the logical processor (P), letting another thread execute remaining goroutines.",
+      "It kills the logical processor (P) and reallocates memory to a new virtual core.",
+      "It pauses all other goroutines until the OS signal returns success.",
+      "It converts the blocking call into a series of non-blocking lock-free CAS operations."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // Rust
+  {
+    id: "prog_rust_easy",
+    category: "programming_rust",
+    difficulty: "easy",
+    questionText: "Which keyword is used to declare an immutable variable in Rust by default?",
+    options: ["const", "let", "imm", "val"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_rust_med",
+    category: "programming_rust",
+    difficulty: "medium",
+    questionText: "What is the primary purpose of the 'Option' type in Rust?",
+    options: [
+      "To configure compiler optimization profiles.",
+      "To represent a value that can be either something or nothing without using null.",
+      "To define optional fields inside a macro definition.",
+      "To execute fallback command-line argument matches."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_rust_hard",
+    category: "programming_rust",
+    difficulty: "hard",
+    questionText: "In Rust, what does the 'RefCell' type provide?",
+    options: [
+      "Thread-safe atomic reference count updates.",
+      "Interior mutability with dynamically enforced borrowing rules at runtime.",
+      "Zero-cost static dispatch for trait objects.",
+      "Asynchronous lock-free message passing channels."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_rust_impossible",
+    category: "programming_rust",
+    difficulty: "impossible",
+    questionText: "How does the Rust compiler evaluate lifetime subtyping when a function accepts a contravariant lifetime reference?",
+    options: [
+      "It allows a longer lifetime to be used where a shorter lifetime is expected, except in invariant positions like mutable pointers.",
+      "It strictly truncates all lifetimes to the scope of the local stack frame.",
+      "It enforces a compiler warning requiring explicit unsafe blocks.",
+      "It maps both lifetimes to static at runtime using an implicit borrow sweep."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // Kotlin
+  {
+    id: "prog_kotlin_easy",
+    category: "programming_kotlin",
+    difficulty: "easy",
+    questionText: "Which keyword is used to declare a read-only (immutable) variable in Kotlin?",
+    options: ["var", "val", "const", "let"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_kotlin_med",
+    category: "programming_kotlin",
+    difficulty: "medium",
+    questionText: "What is the purpose of 'smart casts' in Kotlin?",
+    options: [
+      "To copy object properties asynchronously.",
+      "To automatically cast a variable after verifying its type with 'is'.",
+      "To dynamically convert integers to floats during division.",
+      "To run Kotlin scripts in Java packages."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_kotlin_hard",
+    category: "programming_kotlin",
+    difficulty: "hard",
+    questionText: "What is the key difference between 'launch' and 'async' in Kotlin coroutines?",
+    options: [
+      "launch returns a Job and does not carry a result; async returns a Deferred carrying a result.",
+      "launch is thread-safe; async is not.",
+      "async can only run on the main UI thread; launch is background-only.",
+      "launch is deprecated in favor of async since coroutines 1.6."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_kotlin_impossible",
+    category: "programming_kotlin",
+    difficulty: "impossible",
+    questionText: "How does Kotlin's compiler implement inline functions with 'reified' type parameters?",
+    options: [
+      "By copying the function bytecode directly to call sites, replacing type parameters with concrete class objects.",
+      "By executing reflection lookups at runtime and throwing a NullPointerException.",
+      "By compiling class types into an abstract global registry on JVM startup.",
+      "By replacing generic placeholders with a custom void* type inside compiled classes."
+    ],
+    correctAnswerIndex: 0
+  },
+
+  // Swift
+  {
+    id: "prog_swift_easy",
+    category: "programming_swift",
+    difficulty: "easy",
+    questionText: "Which keyword is used to define a constant in Swift?",
+    options: ["var", "let", "const", "val"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_swift_med",
+    category: "programming_swift",
+    difficulty: "medium",
+    questionText: "What is 'Optional Binding' in Swift?",
+    options: [
+      "Mapping multiple keys to the same dictionary object.",
+      "Safely unwrapping an optional value using if let or guard let.",
+      "Binding a text field to a state variable in SwiftUI.",
+      "Implicitly casting an optional class reference to an AnyObject."
+    ],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "prog_swift_hard",
+    category: "programming_swift",
+    difficulty: "hard",
+    questionText: "What is the primary difference between a 'class' and a 'struct' in Swift?",
+    options: [
+      "Classes are reference types passed by reference; structs are value types passed by copying.",
+      "Structs support multiple inheritance; classes do not.",
+      "Classes are allocated on the stack; structs are allocated on the heap.",
+      "There is no difference since Swift 5."
+    ],
+    correctAnswerIndex: 0
+  },
+  {
+    id: "prog_swift_impossible",
+    category: "programming_swift",
+    difficulty: "impossible",
+    questionText: "Under Swift's Automatic Reference Counting (ARC), how is an unowned reference handled when its target object is deallocated?",
+    options: [
+      "It retains a dangling trap pointer; accessing it triggers a runtime crash (unlike weak, which becomes nil).",
+      "It is automatically set to nil on the next run loop sweep.",
+      "It holds a strong reference, preventing memory deallocation forever.",
+      "It copies the deallocated object's stack to a system cache."
+    ],
+    correctAnswerIndex: 0
   },
 
   // ==================== LOGIC / ALGORITHMS ====================

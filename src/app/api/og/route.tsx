@@ -12,6 +12,42 @@ const KNOWN_CATEGORIES = [
 
 const KNOWN_OUTCOMES = ["boss_victory", "pool_victory", "boss_defeat", "defeat"];
 
+const formatCategoryName = (id: string): string => {
+  if (id.startsWith("programming_")) {
+    const parts = id.split("_");
+    const langRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const langMapping: Record<string, string> = {
+      python: "Python",
+      java: "Java",
+      javascript: "JavaScript",
+      c: "C",
+      cpp: "C++",
+      csharp: "C#",
+      php: "PHP",
+      typescript: "TypeScript",
+      go: "Go",
+      rust: "Rust",
+      kotlin: "Kotlin",
+      swift: "Swift",
+    };
+
+    const formattedLang = langMapping[langRaw.toLowerCase()] || langRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    return `Programming: ${formattedLang} (${formattedDiff})`;
+  }
+
+  const categoryLabels: Record<string, string> = {
+    programming: "Programming // SYS.LANG",
+    "logic-algorithms": "Logic/Algorithms // ALG.COMP",
+    "data-analytics": "Data Analytics // DAT.SCALE",
+    "computer-science-fundamentals": "CS Fundamentals // SYS.CORE",
+  };
+  return categoryLabels[id] || id.toUpperCase();
+};
+
 // Fetch helper with strict timeout
 async function fetchFont(url: string, timeoutMs: number): Promise<ArrayBuffer | null> {
   try {
@@ -44,7 +80,7 @@ export async function GET(request: NextRequest) {
   if (streakNum > 100) streakNum = 100; // reasonable cap
 
   let category = searchParams.get("category") || "programming";
-  if (!KNOWN_CATEGORIES.includes(category)) {
+  if (!KNOWN_CATEGORIES.includes(category) && !category.startsWith("programming_")) {
     category = "programming";
   }
 
@@ -54,13 +90,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 2. Map visual labels
-  const categoryLabels: Record<string, string> = {
-    programming: "Programming // SYS.LANG",
-    "logic-algorithms": "Logic/Algorithms // ALG.COMP",
-    "data-analytics": "Data Analytics // DAT.SCALE",
-    "computer-science-fundamentals": "CS Fundamentals // SYS.CORE",
-  };
-  const categoryLabel = categoryLabels[category];
+  const categoryLabel = formatCategoryName(category);
 
   let outcomeLabel = "GAME OVER";
   let outcomeColor = "#a855f7"; // neonViolet

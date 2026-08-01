@@ -6,12 +6,62 @@ import Link from "next/link";
 import { Question } from "../../lib/questions";
 import SystemLogLoader from "../../components/SystemLogLoader";
 
+const parseCategoryInfo = (id: string) => {
+  if (id.startsWith("programming_")) {
+    const parts = id.split("_");
+    const langRaw = parts[1] || "";
+    const diffRaw = parts[2] || "";
+
+    const langMapping: Record<string, string> = {
+      python: "Python",
+      java: "Java",
+      javascript: "JavaScript",
+      c: "C",
+      cpp: "C++",
+      csharp: "C#",
+      php: "PHP",
+      typescript: "TypeScript",
+      go: "Go",
+      rust: "Rust",
+      kotlin: "Kotlin",
+      swift: "Swift",
+    };
+
+    const formattedLang = langMapping[langRaw.toLowerCase()] || langRaw.toUpperCase();
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    return {
+      isExtendedProgramming: true,
+      language: langRaw,
+      difficulty: diffRaw as "easy" | "medium" | "hard" | "impossible",
+      label: "SYS.LANG",
+      displayName: `Programming: ${formattedLang} (${formattedDiff})`
+    };
+  }
+
+  const labelMap: Record<string, string> = {
+    programming: "SYS.LANG",
+    "logic-algorithms": "ALG.COMP",
+    "data-analytics": "DAT.SCALE",
+    "computer-science-fundamentals": "SYS.CORE",
+  };
+
+  return {
+    isExtendedProgramming: false,
+    language: "",
+    difficulty: "easy" as const,
+    label: labelMap[id] || "SYS.CORE",
+    displayName: id.replace("-", " ")
+  };
+};
+
 function QuizContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   // Selected Category ID
   const categoryId = searchParams.get("category") || "programming";
+  const catInfo = parseCategoryInfo(categoryId);
 
   // States
   const [lives, setLives] = useState<number>(3);
@@ -22,15 +72,15 @@ function QuizContent() {
   const [totalCorrectAnswers, setTotalCorrectAnswers] = useState<number>(0);
 
   // Difficulty States & History
-  const [currentDifficulty, setCurrentDifficulty] = useState<"easy" | "medium" | "hard">("easy");
-  const [history, setHistory] = useState<{ correct: boolean; difficulty: "easy" | "medium" | "hard" }[]>([]);
+  const [currentDifficulty, setCurrentDifficulty] = useState<"easy" | "medium" | "hard" | "impossible">("easy");
+  const [history, setHistory] = useState<{ correct: boolean; difficulty: "easy" | "medium" | "hard" | "impossible" }[]>([]);
   const [alreadyAskedTexts, setAlreadyAskedTexts] = useState<string[]>([]);
   const [alreadyAskedIds, setAlreadyAskedIds] = useState<string[]>([]);
 
   // Current active question & Pre-fetched question
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [nextQuestion, setNextQuestion] = useState<Question | null>(null);
-  const [nextQuestionDifficulty, setNextQuestionDifficulty] = useState<"easy" | "medium" | "hard" | null>(null);
+  const [nextQuestionDifficulty, setNextQuestionDifficulty] = useState<"easy" | "medium" | "hard" | "impossible" | null>(null);
   const [nextQuestionIsBoss, setNextQuestionIsBoss] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -54,8 +104,8 @@ function QuizContent() {
     currentPeakStreak: number,
     answered: number,
     correct: number,
-    diff: "easy" | "medium" | "hard",
-    hist: { correct: boolean; difficulty: "easy" | "medium" | "hard" }[],
+    diff: "easy" | "medium" | "hard" | "impossible",
+    hist: { correct: boolean; difficulty: "easy" | "medium" | "hard" | "impossible" }[],
     askedTexts: string[],
     askedIds: string[],
     currQuestion: Question | null
@@ -75,7 +125,10 @@ function QuizContent() {
         alreadyAskedIds: askedIds,
         currentQuestion: currQuestion,
       };
-      sessionStorage.setItem("active_quiz_session", JSON.stringify(stateObj));
+      const sessionKey = categoryId.startsWith("programming_")
+        ? `active_quiz_session_${categoryId}`
+        : "active_quiz_session";
+      sessionStorage.setItem(sessionKey, JSON.stringify(stateObj));
     } catch (e) {
       console.error("Failed to save quiz session:", e);
     }
@@ -84,14 +137,17 @@ function QuizContent() {
   // Helper to clear session state from sessionStorage
   const clearSessionState = () => {
     try {
-      sessionStorage.removeItem("active_quiz_session");
+      const sessionKey = categoryId.startsWith("programming_")
+        ? `active_quiz_session_${categoryId}`
+        : "active_quiz_session";
+      sessionStorage.removeItem(sessionKey);
     } catch (e) {
       console.error("Failed to clear quiz session:", e);
     }
   };
 
   // Helper to check if the simulated/actual history should trigger a Boss Round
-  const checkIsBossRound = (hist: { correct: boolean; difficulty: "easy" | "medium" | "hard" }[]): boolean => {
+  const checkIsBossRound = (hist: { correct: boolean; difficulty: "easy" | "medium" | "hard" | "impossible" }[]): boolean => {
     if (hist.length < 3) return false;
     const last3 = hist.slice(-3);
     return last3.every((h) => h.correct && h.difficulty === "hard");
@@ -99,7 +155,7 @@ function QuizContent() {
 
   // Helper to fetch a question from our Next.js API Route
   const fetchQuestionFromAPI = async (
-    diff: "easy" | "medium" | "hard",
+    diff: "easy" | "medium" | "hard" | "impossible",
     isBoss: boolean,
     askedTexts: string[],
     askedIds: string[]
@@ -155,14 +211,26 @@ function QuizContent() {
   // Helper to trigger optimistic pre-fetching for the subsequent question
   const triggerPrefetch = async (
     currQuestion: Question,
-    currHistory: { correct: boolean; difficulty: "easy" | "medium" | "hard" }[],
+    currHistory: { correct: boolean; difficulty: "easy" | "medium" | "hard" | "impossible" }[],
     askedTexts: string[],
     askedIds: string[]
   ) => {
-    // Optimistic prediction: assume player gets the current question correct
-    const simHistory = [...currHistory, { correct: true, difficulty: currQuestion.difficulty }];
+    // For Impossible difficulty, always maintain Impossible, no engine call
+    if (currQuestion.difficulty === "impossible") {
+      const isBoss = false;
+      const prefetched = await fetchQuestionFromAPI("impossible", isBoss, askedTexts, askedIds);
+      if (prefetched) {
+        setNextQuestion(prefetched);
+        setNextQuestionDifficulty("impossible");
+        setNextQuestionIsBoss(isBoss);
+      }
+      return;
+    }
 
-    let predictedDiff: "easy" | "medium" | "hard" = "easy";
+    // Optimistic prediction: assume player gets the current question correct
+    const simHistory = [...currHistory, { correct: true, difficulty: currQuestion.difficulty as "easy" | "medium" | "hard" }];
+
+    let predictedDiff: "easy" | "medium" | "hard" | "impossible" = "easy";
     try {
       const res = await fetch("/api/difficulty-engine", {
         method: "POST",
@@ -192,7 +260,7 @@ function QuizContent() {
         else if (currQuestion.difficulty === "medium") predictedDiff = "hard";
         else predictedDiff = "hard";
       } else {
-        predictedDiff = currQuestion.difficulty;
+        predictedDiff = currQuestion.difficulty as "easy" | "medium" | "hard";
       }
     }
 
@@ -212,10 +280,14 @@ function QuizContent() {
     const initializeQuiz = async () => {
       setIsLoading(true);
 
+      const sessionKey = categoryId.startsWith("programming_")
+        ? `active_quiz_session_${categoryId}`
+        : "active_quiz_session";
+
       // Try to restore session state from sessionStorage
       let restored = null;
       try {
-        const stored = sessionStorage.getItem("active_quiz_session");
+        const stored = sessionStorage.getItem(sessionKey);
         if (stored) {
           const parsed = JSON.parse(stored);
           if (parsed && parsed.categoryId === categoryId) {
@@ -252,27 +324,31 @@ function QuizContent() {
         return;
       }
 
+      const startingDiff = catInfo.isExtendedProgramming ? catInfo.difficulty : "easy";
+      const startingLives = startingDiff === "impossible" ? 1 : 3;
+      const initialTimer = startingDiff === "impossible" ? 15 : 30;
+
       // Standard clean initialization
-      setLives(3);
+      setLives(startingLives);
       setScore(0);
       setStreak(0);
       setPeakStreak(0);
       setTotalQuestionsAnswered(0);
       setTotalCorrectAnswers(0);
-      setCurrentDifficulty("easy");
+      setCurrentDifficulty(startingDiff);
       setHistory([]);
       setSelectionState("idle");
       setSelectedIdx(null);
       setIsCorrectSelection(null);
-      setTimer(30);
+      setTimer(initialTimer);
 
       // Clear pre-fetches
       setNextQuestion(null);
       setNextQuestionDifficulty(null);
       setNextQuestionIsBoss(false);
 
-      // Load first question on-demand (difficulty: easy, not boss, empty asked lists)
-      const firstQuestion = await fetchQuestionFromAPI("easy", false, [], []);
+      // Load first question on-demand (difficulty: startingDiff, not boss, empty asked lists)
+      const firstQuestion = await fetchQuestionFromAPI(startingDiff, false, [], []);
 
       if (firstQuestion) {
         setCurrentQuestion(firstQuestion);
@@ -282,7 +358,7 @@ function QuizContent() {
         setAlreadyAskedIds(askedIds);
 
         // Save session immediately
-        saveSessionState(3, 0, 0, 0, 0, 0, "easy", [], askedTexts, askedIds, firstQuestion);
+        saveSessionState(startingLives, 0, 0, 0, 0, 0, startingDiff, [], askedTexts, askedIds, firstQuestion);
 
         // Prefetch the next question
         triggerPrefetch(firstQuestion, [], askedTexts, askedIds);
@@ -307,7 +383,8 @@ function QuizContent() {
       return;
     }
 
-    setTimer(30);
+    const initialTimer = currentDifficulty === "impossible" ? 15 : 30;
+    setTimer(initialTimer);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
 
     timerIntervalRef.current = setInterval(() => {
@@ -326,7 +403,7 @@ function QuizContent() {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [currentQuestion, selectionState, isLoading]);
+  }, [currentQuestion, selectionState, isLoading, currentDifficulty]);
 
   // Unified logic to process an answer (either select option or timeout)
   const processAnswer = async (correct: boolean, chosenIdx: number | null) => {
@@ -358,6 +435,7 @@ function QuizContent() {
       let basePoints = 100;
       if (currentDifficulty === "medium") basePoints = 200;
       if (currentDifficulty === "hard") basePoints = 300;
+      if (currentDifficulty === "impossible") basePoints = 500;
 
       const scoredPoints = Math.round(basePoints * (1 + nextStreak * 0.1));
       nextScore += scoredPoints;
@@ -375,48 +453,52 @@ function QuizContent() {
     setHistory(updatedHistory);
 
     // Call Python difficulty engine with actual updated history
-    let nextDiff: "easy" | "medium" | "hard" = "easy";
-    try {
-      const res = await fetch("/api/difficulty-engine", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history: updatedHistory }),
-      });
-      if (!res.ok) {
-        throw new Error(`Difficulty engine responded with status ${res.status}`);
-      }
-      const data = await res.json();
-      nextDiff = data.nextDifficulty;
-    } catch (e) {
-      console.error("Error calling difficulty engine, falling back to client-side logic:", e);
-      // Fallback logic
-      if (correct) {
-        let suffixCount = 0;
-        for (let i = updatedHistory.length - 1; i >= 0; i--) {
-          if (updatedHistory[i].correct && updatedHistory[i].difficulty === currentDifficulty) {
-            suffixCount++;
-          } else {
-            break;
+    let nextDiff: "easy" | "medium" | "hard" | "impossible" = "easy";
+    if (currentDifficulty === "impossible") {
+      nextDiff = "impossible";
+    } else {
+      try {
+        const res = await fetch("/api/difficulty-engine", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ history: updatedHistory }),
+        });
+        if (!res.ok) {
+          throw new Error(`Difficulty engine responded with status ${res.status}`);
+        }
+        const data = await res.json();
+        nextDiff = data.nextDifficulty;
+      } catch (e) {
+        console.error("Error calling difficulty engine, falling back to client-side logic:", e);
+        // Fallback logic
+        if (correct) {
+          let suffixCount = 0;
+          for (let i = updatedHistory.length - 1; i >= 0; i--) {
+            if (updatedHistory[i].correct && updatedHistory[i].difficulty === currentDifficulty) {
+              suffixCount++;
+            } else {
+              break;
+            }
           }
-        }
-        if (suffixCount >= 3) {
-          if (currentDifficulty === "easy") nextDiff = "medium";
-          else if (currentDifficulty === "medium") nextDiff = "hard";
-          else nextDiff = "hard";
+          if (suffixCount >= 3) {
+            if (currentDifficulty === "easy") nextDiff = "medium";
+            else if (currentDifficulty === "medium") nextDiff = "hard";
+            else nextDiff = "hard";
+          } else {
+            nextDiff = currentDifficulty as "easy" | "medium" | "hard";
+          }
         } else {
-          nextDiff = currentDifficulty;
+          if (currentDifficulty === "hard") nextDiff = "medium";
+          else nextDiff = "easy";
         }
-      } else {
-        if (currentDifficulty === "hard") nextDiff = "medium";
-        else nextDiff = "easy";
       }
     }
 
     // Check if the next question should be a Boss Round
-    const nextIsBoss = checkIsBossRound(updatedHistory);
+    const nextIsBoss = currentDifficulty === "impossible" ? false : checkIsBossRound(updatedHistory);
 
     const isGameOver = nextLives <= 0;
-    const isBossVictory = correct && currentQuestion.isBossRound;
+    const isBossVictory = correct && (currentQuestion.isBossRound || (currentDifficulty === "impossible" && totalQuestionsAnswered + 1 >= 10));
 
     setTimeout(async () => {
       if (isGameOver) {
@@ -527,11 +609,8 @@ function QuizContent() {
   }
 
   // Set category label
-  let categoryLabel = "SYS.CORE";
-  if (categoryId === "programming") categoryLabel = "SYS.LANG";
-  if (categoryId === "logic-algorithms") categoryLabel = "ALG.COMP";
-  if (categoryId === "data-analytics") categoryLabel = "DAT.SCALE";
-  if (categoryId === "computer-science-fundamentals") categoryLabel = "SYS.FUND";
+  const categoryLabel = catInfo.label;
+  const categoryDisplayName = catInfo.displayName;
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 md:py-12 max-w-4xl mx-auto w-full select-none animate-page-fade">
@@ -541,7 +620,7 @@ function QuizContent() {
         <div className="flex flex-col text-center md:text-left">
           <span className="text-[10px] font-display tracking-widest text-textMuted uppercase">CURRENT SIMULATION</span>
           <span className="text-sm font-black text-neonCyan font-display uppercase tracking-wider">
-            {categoryId.replace("-", " ")} {" // "} {categoryLabel}
+            {categoryDisplayName} {" // "} {categoryLabel}
           </span>
         </div>
 
@@ -551,16 +630,19 @@ function QuizContent() {
           <div className="flex flex-col items-start md:items-end">
             <span className="text-[10px] font-display tracking-widest text-textMuted uppercase mb-1">SHIELD</span>
             <div className="flex gap-1">
-              {[1, 2, 3].map((heart) => (
-                <span
-                  key={heart}
-                  className={`text-lg transition-all duration-300 ${
-                    heart <= lives ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]" : "opacity-20 scale-90"
-                  }`}
-                >
-                  ❤️
-                </span>
-              ))}
+              {Array.from({ length: currentDifficulty === "impossible" ? 1 : 3 }).map((_, idx) => {
+                const heart = idx + 1;
+                return (
+                  <span
+                    key={heart}
+                    className={`text-lg transition-all duration-300 ${
+                      heart <= lives ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]" : "opacity-20 scale-90"
+                    }`}
+                  >
+                    ❤️
+                  </span>
+                );
+              })}
             </div>
           </div>
 
@@ -605,7 +687,7 @@ function QuizContent() {
       <div className="w-full h-1 bg-bgDark border border-neonViolet/20 rounded-full mb-6 overflow-hidden">
         <div
           className={`h-full transition-all duration-1000 ${timer <= 5 ? "bg-neonViolet" : "bg-gradient-to-r from-neonCyan to-neonViolet"}`}
-          style={{ width: `${(timer / 30) * 100}%` }}
+          style={{ width: `${(timer / (currentDifficulty === "impossible" ? 15 : 30)) * 100}%` }}
         ></div>
       </div>
 

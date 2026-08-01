@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { staticQuestions } from "../../../lib/questions";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface GeminiQuestion {
   question: string;
   options: string[];
@@ -17,6 +20,14 @@ const formatSubcategoryName = (id: string): string => {
   if (id === "sentence-correction") return "Sentence Correction";
   return id.split("-").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 };
+
+function createNoCacheResponse(data: any) {
+  const response = NextResponse.json(data);
+  response.headers.set("Cache-Control", "no-store, max-age=0, must-revalidate");
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("Expires", "0");
+  return response;
+}
 
 function getFallbackQuestion(
   category: string,
@@ -40,7 +51,22 @@ function getFallbackQuestion(
     }
   }
 
-  // If isBossRound is requested, try to find a boss round question first
+  const getSector = (cat: string): string => {
+    if (cat.startsWith("programming")) return "programming";
+    if (cat.startsWith("business")) return "business";
+    if (cat.startsWith("english")) return "english";
+    return "";
+  };
+  const targetSector = getSector(targetCategory);
+  const matchSector = (cat: string): boolean => {
+    if (!targetSector) return false;
+    if (targetSector === "programming") {
+      return cat.startsWith("programming");
+    }
+    return cat.startsWith(targetSector + "_");
+  };
+
+  // Level 1: Exact subcategory and exact difficulty (not asked)
   let candidates = staticQuestions.filter((q) => {
     const matchCategory = q.category === targetCategory;
     const matchBoss = isBossRound ? q.isBossRound : true;
@@ -50,8 +76,37 @@ function getFallbackQuestion(
     return matchCategory && matchBoss && matchDiff && notAskedId && notAskedText;
   });
 
+  // Level 2: Exact subcategory, any difficulty (not asked)
   if (candidates.length === 0) {
-    // Relax already-asked text/id filters
+    candidates = staticQuestions.filter((q) => {
+      const matchCategory = q.category === targetCategory;
+      const notAskedId = !alreadyAskedIds.includes(q.id);
+      const notAskedText = !alreadyAskedTexts.includes(q.questionText);
+      return matchCategory && notAskedId && notAskedText;
+    });
+  }
+
+  // Level 3: Same sector/prefix, any difficulty (not asked)
+  if (candidates.length === 0) {
+    candidates = staticQuestions.filter((q) => {
+      const notAskedId = !alreadyAskedIds.includes(q.id);
+      const notAskedText = !alreadyAskedTexts.includes(q.questionText);
+      return matchSector(q.category) && notAskedId && notAskedText;
+    });
+  }
+
+  // Level 4: Entire bank, any difficulty (not asked)
+  if (candidates.length === 0) {
+    candidates = staticQuestions.filter((q) => {
+      const notAskedId = !alreadyAskedIds.includes(q.id);
+      const notAskedText = !alreadyAskedTexts.includes(q.questionText);
+      return notAskedId && notAskedText;
+    });
+  }
+
+  // Level 5: Relaxed (allow repeats)
+  if (candidates.length === 0) {
+    // Relaxed Level 1: Exact category and exact difficulty
     candidates = staticQuestions.filter((q) => {
       const matchCategory = q.category === targetCategory;
       const matchBoss = isBossRound ? q.isBossRound : true;
@@ -61,17 +116,17 @@ function getFallbackQuestion(
   }
 
   if (candidates.length === 0) {
-    // Relax difficulty / boss round completely
+    // Relaxed Level 2: Exact category, any difficulty
     candidates = staticQuestions.filter((q) => q.category === targetCategory);
   }
 
   if (candidates.length === 0) {
-    // Fallback to general programming category if language specific is empty
-    candidates = staticQuestions.filter((q) => q.category === "programming");
+    // Relaxed Level 3: Same sector/prefix, any difficulty
+    candidates = staticQuestions.filter((q) => matchSector(q.category));
   }
 
   if (candidates.length === 0) {
-    // Absolute fallback
+    // Relaxed Level 4: Entire bank, any difficulty
     candidates = staticQuestions;
   }
 
@@ -140,7 +195,7 @@ async function callGemini(
   prompt += ` Ensure the question has 4 plausible options, and only one correct option.`;
 
   if (alreadyAskedTexts && alreadyAskedTexts.length > 0) {
-    prompt += ` Avoid generating any of the following already-asked question texts: ${JSON.stringify(alreadyAskedTexts)}.`;
+    prompt += ` CRITICAL REQUIREMENT: You MUST NOT generate any of the following already-asked question texts under any circumstances: ${JSON.stringify(alreadyAskedTexts)}.`;
   }
 
   prompt += ` Return your response in strict JSON format.`;
@@ -189,6 +244,7 @@ async function callGemini(
       },
       body: JSON.stringify(requestBody),
       signal: controller.signal,
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -309,12 +365,20 @@ export async function POST(request: Request) {
         isBossRound: isBossRound || false,
       };
 
-      return NextResponse.json({
+      return createNoCacheResponse({
         question: responseQuestion,
         source: "gemini",
       });
     } else {
       // Fallback seamlessly to Static Question
+      if (process.env.NODE_ENV === "development") {
+        if (!process.env.GEMINI_API_KEY) {
+          console.warn("⚠️ GEMINI_API_KEY not set — using static fallback questions");
+        } else {
+          console.warn("⚠️ Gemini API failed or timed out — using static fallback questions");
+        }
+      }
+
       const fallbackQuestion = getFallbackQuestion(
         category,
         targetDifficulty,
@@ -333,16 +397,19 @@ export async function POST(request: Request) {
         isBossRound: fallbackQuestion.isBossRound || false,
       };
 
-      return NextResponse.json({
+      return createNoCacheResponse({
         question: responseQuestion,
         source: "static_fallback",
       });
     }
   } catch (error) {
     console.error("Error in generate-question route:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.warn("⚠️ Error in generate-question route — using static fallback questions");
+    }
     // Ultimate fallback if JSON parse fails or other unexpected error
     const fallbackQuestion = getFallbackQuestion("programming", "easy", [], [], false);
-    return NextResponse.json({
+    return createNoCacheResponse({
       question: fallbackQuestion,
       source: "error_fallback",
     });

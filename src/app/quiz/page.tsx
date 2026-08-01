@@ -141,6 +141,15 @@ function QuizContent() {
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
       sessionStorage.removeItem(sessionKey);
+
+      // Save the asked questions under last_attempt_questions_${categoryId} so the next run knows to avoid them on Q1!
+      if (alreadyAskedTexts.length > 0 || alreadyAskedIds.length > 0) {
+        const lastAttemptData = {
+          texts: alreadyAskedTexts,
+          ids: alreadyAskedIds
+        };
+        sessionStorage.setItem(`last_attempt_questions_${categoryId}`, JSON.stringify(lastAttemptData));
+      }
     } catch (e) {
       console.error("Failed to clear quiz session:", e);
     }
@@ -177,6 +186,9 @@ function QuizContent() {
 
       if (response.ok) {
         const data = await response.json();
+        if (process.env.NODE_ENV === "development" && (data.source === "static_fallback" || data.source === "error_fallback")) {
+          console.warn("⚠️ GEMINI_API_KEY not set or invalid — using static fallback questions");
+        }
         return data.question;
       }
     } catch (e) {
@@ -347,20 +359,44 @@ function QuizContent() {
       setNextQuestionDifficulty(null);
       setNextQuestionIsBoss(false);
 
-      // Load first question on-demand (difficulty: startingDiff, not boss, empty asked lists)
-      const firstQuestion = await fetchQuestionFromAPI(startingDiff, false, [], []);
+      // Retrieve the prior attempt's asked questions to avoid repeating the first question
+      let priorAttemptTexts: string[] = [];
+      let priorAttemptIds: string[] = [];
+      try {
+        const priorStored = sessionStorage.getItem(`last_attempt_questions_${categoryId}`);
+        if (priorStored) {
+          const parsedPrior = JSON.parse(priorStored);
+          if (parsedPrior) {
+            priorAttemptTexts = parsedPrior.texts || [];
+            priorAttemptIds = parsedPrior.ids || [];
+          }
+        }
+      } catch (e) {
+        console.error("Failed to read prior attempt questions:", e);
+      }
+
+      // Load first question on-demand (difficulty: startingDiff, not boss, passing prior attempt lists to avoid repetition)
+      const firstQuestion = await fetchQuestionFromAPI(startingDiff, false, priorAttemptTexts, priorAttemptIds);
 
       if (firstQuestion) {
         setCurrentQuestion(firstQuestion);
+        // Start a fresh history tracking array containing ONLY the new first question
         const askedTexts = [firstQuestion.questionText];
         const askedIds = [firstQuestion.id];
         setAlreadyAskedTexts(askedTexts);
         setAlreadyAskedIds(askedIds);
 
+        // Discard the prior attempt questions so we don't unnecessarily restrict future questions
+        try {
+          sessionStorage.removeItem(`last_attempt_questions_${categoryId}`);
+        } catch (e) {
+          console.error("Failed to remove prior attempt questions:", e);
+        }
+
         // Save session immediately
         saveSessionState(startingLives, 0, 0, 0, 0, 0, startingDiff, [], askedTexts, askedIds, firstQuestion);
 
-        // Prefetch the next question
+        // Prefetch the next question (using ONLY the current session's asked list)
         triggerPrefetch(firstQuestion, [], askedTexts, askedIds);
       } else {
         finishQuiz(0, 0, "defeat", 0, 0);

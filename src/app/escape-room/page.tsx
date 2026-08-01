@@ -18,7 +18,7 @@ export default function EscapeRoomPage() {
 
   // Selection Feedback States
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [feedbackType, setFeedbackType] = useState<"idle" | "correct" | "incorrect" | "lockout">("idle");
+  const [feedbackType, setFeedbackType] = useState<"idle" | "correct" | "incorrect" | "lockout" | "trick">("idle");
 
   // Global Countdown Timer (300 seconds total)
   const [timeLeft, setTimeLeft] = useState<number>(300);
@@ -118,6 +118,20 @@ export default function EscapeRoomPage() {
     if (gameState !== "playing" || feedbackType !== "idle") return;
 
     const currentQuestion = escapeRoomQuestions[currentRoomIdx];
+
+    // Check for Trick Easter Egg Answer Option
+    if (currentQuestion.options[idx] === "sudo poweroff") {
+      setSelectedIdx(idx);
+      setFeedbackType("trick");
+
+      // Reset after 1.5 seconds so user can choose again, with absolutely no penalty to attempts, lives or time
+      setTimeout(() => {
+        setSelectedIdx(null);
+        setFeedbackType("idle");
+      }, 1500);
+      return;
+    }
+
     const isCorrect = idx === currentQuestion.correctAnswerIndex;
 
     setSelectedIdx(idx);
@@ -435,7 +449,7 @@ export default function EscapeRoomPage() {
             {/* Answer Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {currentQuestion.options.map((option: string, idx: number) => {
-                const letters = ["A", "B", "C", "D"];
+                const letters = ["A", "B", "C", "D", "E"];
 
                 let borderStyle = { borderColor: "rgba(168, 85, 247, 0.2)" };
                 let letterStyle = { borderColor: "rgba(168, 85, 247, 0.3)", backgroundColor: "rgba(168, 85, 247, 0.1)", color: "#a855f7" };
@@ -444,16 +458,23 @@ export default function EscapeRoomPage() {
                 if (selectedIdx !== null) {
                   const isCorrectAnswer = idx === currentQuestion.correctAnswerIndex;
                   const isSelectedAnswer = idx === selectedIdx;
+                  const isTrickAnswer = currentQuestion.options[idx] === "sudo poweroff";
 
                   if (isCorrectAnswer) {
                     borderStyle = { borderColor: "#10b981" };
                     letterStyle = { borderColor: "#10b981", backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#10b981" };
                     textStyle = { color: "#10b981" };
                   } else if (isSelectedAnswer) {
-                    // This was incorrect
-                    borderStyle = { borderColor: "#ef4444" };
-                    letterStyle = { borderColor: "#ef4444", backgroundColor: "rgba(239, 104, 104, 0.15)", color: "#ef4444" };
-                    textStyle = { color: "#ef4444" };
+                    if (isTrickAnswer) {
+                      borderStyle = { borderColor: "#a855f7" };
+                      letterStyle = { borderColor: "#a855f7", backgroundColor: "rgba(168, 85, 247, 0.15)", color: "#a855f7" };
+                      textStyle = { color: "#a855f7" };
+                    } else {
+                      // This was incorrect
+                      borderStyle = { borderColor: "#ef4444" };
+                      letterStyle = { borderColor: "#ef4444", backgroundColor: "rgba(239, 104, 104, 0.15)", color: "#ef4444" };
+                      textStyle = { color: "#ef4444" };
+                    }
                   } else {
                     borderStyle = { borderColor: "rgba(168, 85, 247, 0.05)" };
                     letterStyle = { borderColor: "rgba(168, 85, 247, 0.05)", backgroundColor: "transparent", color: "rgba(156, 163, 175, 0.3)" };
@@ -504,6 +525,19 @@ export default function EscapeRoomPage() {
                   className="w-full py-4 px-6 rounded border font-display text-center tracking-wider text-xs md:text-sm shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse uppercase"
                 >
                   🚀 DOOR UNLOCKED // CORE OVERRIDE SUCCESSFUL // GOTO ROOM 0{currentRoomIdx + 2 <= 8 ? currentRoomIdx + 2 : 8} 🚀
+                </div>
+              )}
+
+              {feedbackType === "trick" && (
+                <div
+                  style={{
+                    backgroundColor: "rgba(168, 85, 247, 0.08)",
+                    borderColor: "#a855f7",
+                    color: "#a855f7",
+                  }}
+                  className="w-full py-4 px-6 rounded border font-display text-center tracking-wider text-xs md:text-sm shadow-[0_0_15px_rgba(168, 85, 247, 0.15)] animate-shake uppercase font-bold"
+                >
+                  💻 Nice try. Pick a real answer. 💻
                 </div>
               )}
 

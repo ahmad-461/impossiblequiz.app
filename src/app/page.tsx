@@ -1,13 +1,158 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import ScrollReveal from "../components/ScrollReveal";
+
+function DodgingButton({ onCatch }: { onCatch: () => void }) {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [mobileTapped, setMobileTapped] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!buttonRef.current) return;
+
+      const rect = buttonRef.current.getBoundingClientRect();
+      const buttonCenterX = rect.left + rect.width / 2;
+      const buttonCenterY = rect.top + rect.height / 2;
+
+      const dx = e.clientX - buttonCenterX;
+      const dy = e.clientY - buttonCenterY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Trigger dodge if mouse is within 120px
+      if (distance < 120) {
+        // Calculate dodge direction: away from cursor
+        const angle = Math.atan2(dy, dx);
+
+        let newX = 0;
+        let newY = 0;
+        let attempts = 0;
+
+        // Keep generating new offsets until we find one that is at least 180px away from the current cursor position
+        while (attempts < 15) {
+          const rx = (Math.random() - 0.5) * 300; // -150 to 150
+          const ry = (Math.random() - 0.5) * 200; // -100 to 100
+
+          const potentialAbsoluteX = buttonCenterX - position.x + rx;
+          const potentialAbsoluteY = buttonCenterY - position.y + ry;
+          const distToCursor = Math.sqrt(
+            Math.pow(e.clientX - potentialAbsoluteX, 2) +
+            Math.pow(e.clientY - potentialAbsoluteY, 2)
+          );
+
+          if (distToCursor > 180) {
+            newX = rx;
+            newY = ry;
+            break;
+          }
+          attempts++;
+        }
+
+        if (attempts >= 15) {
+          newX = position.x - Math.cos(angle) * 120;
+          newY = position.y - Math.sin(angle) * 120;
+        }
+
+        const maxOffset = 250;
+        newX = Math.max(-maxOffset, Math.min(maxOffset, newX));
+        newY = Math.max(-120, Math.min(120, newY));
+
+        setPosition({ x: newX, y: newY });
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [position]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!mobileTapped) {
+      e.preventDefault(); // Prevents click simulation
+      const rx = (Math.random() - 0.5) * 240;
+      const ry = (Math.random() - 0.5) * 140;
+      setPosition({ x: rx, y: ry });
+      setMobileTapped(true);
+    } else {
+      onCatch();
+      setPosition({ x: 0, y: 0 });
+      setMobileTapped(false);
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (e.clientX !== 0 && e.clientY !== 0 && !mobileTapped) {
+      onCatch();
+      setPosition({ x: 0, y: 0 });
+    }
+  };
+
+  return (
+    <button
+      ref={buttonRef}
+      onTouchStart={handleTouchStart}
+      onClick={handleClick}
+      style={{
+        transform: `translate(${position.x}px, ${position.y}px)`,
+        transition: "transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)",
+        backgroundColor: "rgba(168, 85, 247, 0.1)",
+        borderColor: "#a855f7",
+        color: "#f5f5f5",
+      }}
+      className="px-4 py-2 border rounded font-display text-[11px] tracking-widest uppercase hover:bg-neonViolet/20 hover:shadow-[0_0_12px_rgba(168, 85, 247, 0.3)] select-none cursor-pointer"
+    >
+      Don&apos;t Click This
+    </button>
+  );
+}
 
 export default function Home() {
   // Live Preview Interactive State
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+
+  // Easter Egg States
+  const [showBreachToast, setShowBreachToast] = useState(false);
+  const [isGlitching, setIsGlitching] = useState(false);
+
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const glitchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Print styled Console Easter Egg once on mount
+    console.log(
+      `%c\n  ___                             _ _     _      _____             _ \n |_ _|_ __  _ __   ___  ___  ___ (_) |__ | | ___|  _  \\ _   _ _ __ | |\n  | || '_ \\| '_ \\ / _ \\/ __|/ __|| | '_ \\| |/ _ \\ | |  | | | | '_ \\| |\n  | || |_) | |_) | (_) \\__ \\__ \\| | |_) | |  __/ |_|  | |_| | |_) |_|\n |___| .__/| .__/ \\___/|___/___/|_|_.__/|_|\\___|_____/ \\__,_| .__/(_)\n     |_|   |_|                                              |_|      \n\n%cLooking for bugs? So am I. — Ahmad & Jules\n`,
+      "color: #a855f7; font-weight: bold; font-family: monospace; text-shadow: 0 0 5px rgba(168, 85, 247, 0.5); font-size: 11px;",
+      "color: #22d3ee; font-weight: bold; font-family: monospace; font-size: 12px; padding-top: 10px;"
+    );
+
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (glitchTimerRef.current) clearTimeout(glitchTimerRef.current);
+    };
+  }, []);
+
+  const triggerCatch = () => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setShowBreachToast(true);
+    toastTimerRef.current = setTimeout(() => {
+      setShowBreachToast(false);
+    }, 4000);
+  };
+
+  const triggerGlitch = () => {
+    if (isGlitching) return;
+    setIsGlitching(true);
+    if (glitchTimerRef.current) clearTimeout(glitchTimerRef.current);
+    glitchTimerRef.current = setTimeout(() => {
+      setIsGlitching(false);
+    }, 1500);
+  };
 
   const featuredQuestion = {
     questionText: "In Python, what is the output of [x for x in range(5) if x % 2 == 0]?",
@@ -103,6 +248,14 @@ export default function Home() {
               >
                 VIEW LEADERBOARD
               </Link>
+
+              {/* Trick Glitch Button */}
+              <button
+                onClick={triggerGlitch}
+                className="inline-flex items-center justify-center px-8 py-4 text-sm font-black font-display tracking-widest uppercase transition-all duration-300 rounded border border-neonViolet/25 hover:border-neonViolet bg-bgDark hover:bg-neonViolet/5 text-neonViolet focus:outline-none focus:ring-2 focus:ring-neonViolet text-center cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)] hover:shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+              >
+                ???
+              </button>
             </ScrollReveal>
 
             {/* Futuristic status items */}
@@ -339,6 +492,109 @@ export default function Home() {
           </div>
         </ScrollReveal>
       </div>
+
+      {/* Decoy Button Container */}
+      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 pb-16 flex justify-end h-16 relative">
+        <div className="relative">
+          <DodgingButton onCatch={triggerCatch} />
+        </div>
+      </div>
+
+      {/* Easter Egg Toast */}
+      {showBreachToast && (
+        <div
+          style={{
+            borderColor: "#22d3ee",
+            backgroundColor: "#0a0b10",
+            boxShadow: "0 0 15px rgba(34, 211, 238, 0.25)",
+          }}
+          className="fixed bottom-6 right-6 z-50 border-2 px-6 py-4 rounded flex items-center gap-3 animate-page-fade font-display"
+        >
+          <div className="w-2.5 h-2.5 rounded-full bg-neonCyan animate-ping"></div>
+          <div>
+            <div className="text-xs font-black text-neonCyan uppercase tracking-widest">
+              SYSTEM BREACH SUCCESSFUL
+            </div>
+            <div className="text-[10px] text-textMuted mt-1">
+              You found the easter egg.
+            </div>
+          </div>
+          <button
+            onClick={() => setShowBreachToast(false)}
+            className="text-[10px] text-textMuted hover:text-neonCyan ml-4 focus:outline-none cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Glitch Overlay */}
+      {isGlitching && (
+        <div
+          style={{ backgroundColor: "#0a0b10" }}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 text-center select-none font-mono animate-glitch-flicker animate-glitch-shake"
+        >
+          {/* CRITICAL ALARM EFFECT */}
+          <div className="absolute inset-0 bg-[#ef4444]/5 pointer-events-none"></div>
+
+          {/* Glitch Box */}
+          <div
+            style={{ borderColor: "#ef4444" }}
+            className="border-2 border-double max-w-xl w-full p-8 bg-black/90 rounded relative shadow-[0_0_30px_rgba(239,68,68,0.3)]"
+          >
+            {/* Corner Indicators */}
+            <span className="absolute top-2 left-2 text-[10px] text-[#ef4444] font-bold">SYSTEM_LOCKOUT</span>
+            <span className="absolute bottom-2 right-2 text-[10px] text-[#ef4444] font-bold">ERR_0xDEADBEEF</span>
+
+            <div className="text-4xl mb-4">⚠️</div>
+
+            <h2 className="text-[#ef4444] text-xl md:text-2xl font-black tracking-widest uppercase mb-4 animate-pulse">
+              ACCESS DENIED — NICE TRY
+            </h2>
+
+            <div className="text-left text-xs space-y-2 text-textMuted border-t border-[#ef4444]/20 pt-4 max-w-md mx-auto">
+              <p className="text-[#a855f7]">&gt; COGNITIVE BYPASS PROTOCOL DETECTED</p>
+              <p>&gt; IP SOURCE: USER_IMPATIENT_BRAIN</p>
+              <p>&gt; INTERCEPTED BY: Mainframe Security Layer</p>
+              <p className="text-[#22d3ee] animate-pulse">&gt; REBOOTING SECURITY INTERFACE IN 1.5s...</p>
+            </div>
+
+            {/* Fake progress bar */}
+            <div className="w-full bg-[#12131e] h-1.5 mt-6 rounded overflow-hidden border border-[#ef4444]/20">
+              <div
+                style={{ backgroundColor: "#ef4444" }}
+                className="h-full w-full animate-[loading-bar_1.5s_linear_infinite]"
+              ></div>
+            </div>
+          </div>
+
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes glitch-flicker {
+              0% { opacity: 0.98; }
+              50% { opacity: 0.95; }
+              100% { opacity: 0.99; }
+            }
+            @keyframes glitch-shake {
+              0%, 100% { transform: translate(0, 0); }
+              10% { transform: translate(-1px, 1px); }
+              30% { transform: translate(1px, -1px); }
+              50% { transform: translate(-1px, 1.5px); }
+              70% { transform: translate(1.5px, 0.5px); }
+              90% { transform: translate(-0.5px, -1px); }
+            }
+            @keyframes loading-bar {
+              0% { width: 0%; }
+              100% { width: 100%; }
+            }
+            .animate-glitch-flicker {
+              animation: glitch-flicker 0.15s infinite;
+            }
+            .animate-glitch-shake {
+              animation: glitch-shake 0.25s infinite;
+            }
+          `}} />
+        </div>
+      )}
     </div>
   );
 }

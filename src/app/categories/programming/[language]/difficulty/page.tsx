@@ -1,4 +1,9 @@
+"use client";
+
+import { use, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import AITwinToggle from "../../../../../components/AITwinToggle";
 
 interface PageProps {
   params: Promise<{ language: string }>;
@@ -22,56 +27,60 @@ const formatLanguageName = (id: string): string => {
   return mapping[id.toLowerCase()] || id.toUpperCase();
 };
 
-export default async function DifficultyPage({ params }: PageProps) {
-  const { language } = await params;
-  const formattedLanguage = formatLanguageName(language);
+const tiers = [
+  {
+    id: "easy",
+    name: "EASY",
+    tag: "LEVEL_01",
+    lives: "3 SHIELDS",
+    timer: "30s COUNTDOWN",
+    rules: "Adaptive promotion",
+    desc: "Infiltrate basic syntax, standard types, and elementary language library primitives.",
+    style: "border-neonCyan/20 hover:border-neonCyan hover:shadow-[0_0_15px_rgba(34,211,238,0.15)]",
+    badgeStyle: "text-neonCyan bg-neonCyan/10 border-neonCyan/25",
+  },
+  {
+    id: "medium",
+    name: "MEDIUM",
+    tag: "LEVEL_02",
+    lives: "3 SHIELDS",
+    timer: "30s COUNTDOWN",
+    rules: "Adaptive promotion/demotion",
+    desc: "Encounter semantic quirks, data structures, and intermediate runtime operations.",
+    style: "border-neonCyan/20 hover:border-neonCyan hover:shadow-[0_0_15px_rgba(34,211,238,0.15)]",
+    badgeStyle: "text-neonCyan bg-neonCyan/10 border-neonCyan/25",
+  },
+  {
+    id: "hard",
+    name: "HARD",
+    tag: "LEVEL_03",
+    lives: "3 SHIELDS",
+    timer: "30s COUNTDOWN",
+    rules: "Adaptive demotion / Boss round enabled",
+    desc: "Survive extreme edge cases, garbage collector details, and compile-time constraints.",
+    style: "border-neonViolet/20 hover:border-neonViolet hover:shadow-[0_0_15px_rgba(168,85,247,0.15)]",
+    badgeStyle: "text-neonViolet bg-neonViolet/10 border-neonViolet/25",
+  },
+  {
+    id: "impossible",
+    name: "IMPOSSIBLE",
+    tag: "LVL_DEATH",
+    lives: "1 SHIELD (SINGLE-LIFE)",
+    timer: "15s COUNTDOWN (BRUTAL)",
+    rules: "NO DEMOTION PATH // NO SAFEPAGE",
+    desc: "The ultimate trial. Deep compiler engine optimizations, low-level memory allocation, and obscure specifications.",
+    style: "border-neonViolet border-2 bg-gradient-to-b from-[#150a25] to-bgDark hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] animate-pulse",
+    badgeStyle: "text-neonViolet bg-neonViolet/20 border-neonViolet/50 font-black animate-pulse",
+  },
+];
 
-  const tiers = [
-    {
-      id: "easy",
-      name: "EASY",
-      tag: "LEVEL_01",
-      lives: "3 SHIELDS",
-      timer: "30s COUNTDOWN",
-      rules: "Adaptive promotion",
-      desc: "Infiltrate basic syntax, standard types, and elementary language library primitives.",
-      style: "border-neonCyan/20 hover:border-neonCyan hover:shadow-[0_0_15px_rgba(34,211,238,0.15)]",
-      badgeStyle: "text-neonCyan bg-neonCyan/10 border-neonCyan/25",
-    },
-    {
-      id: "medium",
-      name: "MEDIUM",
-      tag: "LEVEL_02",
-      lives: "3 SHIELDS",
-      timer: "30s COUNTDOWN",
-      rules: "Adaptive promotion/demotion",
-      desc: "Encounter semantic quirks, data structures, and intermediate runtime operations.",
-      style: "border-neonCyan/20 hover:border-neonCyan hover:shadow-[0_0_15px_rgba(34,211,238,0.15)]",
-      badgeStyle: "text-neonCyan bg-neonCyan/10 border-neonCyan/25",
-    },
-    {
-      id: "hard",
-      name: "HARD",
-      tag: "LEVEL_03",
-      lives: "3 SHIELDS",
-      timer: "30s COUNTDOWN",
-      rules: "Adaptive demotion / Boss round enabled",
-      desc: "Survive extreme edge cases, garbage collector details, and compile-time constraints.",
-      style: "border-neonViolet/20 hover:border-neonViolet hover:shadow-[0_0_15px_rgba(168,85,247,0.15)]",
-      badgeStyle: "text-neonViolet bg-neonViolet/10 border-neonViolet/25",
-    },
-    {
-      id: "impossible",
-      name: "IMPOSSIBLE",
-      tag: "LVL_DEATH",
-      lives: "1 SHIELD (SINGLE-LIFE)",
-      timer: "15s COUNTDOWN (BRUTAL)",
-      rules: "NO DEMOTION PATH // NO SAFEPAGE",
-      desc: "The ultimate trial. Deep compiler engine optimizations, low-level memory allocation, and obscure specifications.",
-      style: "border-neonViolet border-2 bg-gradient-to-b from-[#150a25] to-bgDark hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] animate-pulse",
-      badgeStyle: "text-neonViolet bg-neonViolet/20 border-neonViolet/50 font-black animate-pulse",
-    },
-  ];
+function DifficultyContent({ params }: PageProps) {
+  const { language } = use(params);
+  const searchParams = useSearchParams();
+  const initialAiTwin = searchParams.get("aiTwin") === "true";
+  const [aiTwin, setAiTwin] = useState(initialAiTwin);
+
+  const formattedLanguage = formatLanguageName(language);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-6xl mx-auto w-full select-none">
@@ -87,16 +96,19 @@ export default async function DifficultyPage({ params }: PageProps) {
         </span>
       </h1>
 
-      <p className="text-textMuted max-w-xl text-center text-sm md:text-base mb-12">
+      <p className="text-textMuted max-w-xl text-center text-sm md:text-base mb-8">
         Select your system authorization tier for {formattedLanguage}. Threat levels escalate rapidly.
       </p>
+
+      {/* AI Twin Toggle Component */}
+      <AITwinToggle enabled={aiTwin} onChange={setAiTwin} />
 
       {/* Difficulty Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-12">
         {tiers.map((tier) => (
           <Link
             key={tier.id}
-            href={`/quiz?category=programming_${language}_${tier.id}`}
+            href={`/quiz?category=programming_${language}_${tier.id}&aiTwin=${aiTwin}`}
             aria-label={`Select difficulty ${tier.name}. ${tier.desc}`}
             className={`group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border transition-all duration-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neonCyan hover:-translate-y-1 ${tier.style}`}
           >
@@ -162,11 +174,19 @@ export default async function DifficultyPage({ params }: PageProps) {
 
       {/* Back to Languages Link */}
       <Link
-        href="/categories/programming/languages"
+        href={`/categories/programming/languages?aiTwin=${aiTwin}`}
         className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
       >
         ← BACK TO LANGUAGES
       </Link>
     </div>
+  );
+}
+
+export default function DifficultyPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<div className="text-center py-20 font-display text-textMuted">LOADING DIAGNOSTICS...</div>}>
+      <DifficultyContent params={params} />
+    </Suspense>
   );
 }

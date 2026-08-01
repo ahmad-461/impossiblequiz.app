@@ -1,4 +1,8 @@
+"use client";
+
+import { Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 interface Subcategory {
   id: string;
@@ -88,7 +92,10 @@ const subcategories: Subcategory[] = [
   }
 ];
 
-export default function BusinessSubcategoriesPage() {
+function BusinessSubcategoriesContent() {
+  const searchParams = useSearchParams();
+  const aiTwin = searchParams.get("aiTwin") === "true";
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-6xl mx-auto w-full select-none">
       {/* Header Badge */}
@@ -109,51 +116,62 @@ export default function BusinessSubcategoriesPage() {
 
       {/* Subcategories Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full mb-12">
-        {subcategories.map((sub) => (
-          <Link
-            key={sub.id}
-            href={`/categories/business/${sub.id}/difficulty`}
-            aria-label={`Select subcategory: ${sub.name}. Description: ${sub.description}`}
-            className="group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border-2 border-neonViolet/20 hover:border-neonCyan transition-all duration-300 shadow-[0_0_10px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:-translate-y-1 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neonCyan"
-          >
-            {/* Left absolute subtle neon glow line */}
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
+        {subcategories.map((sub) => {
+          const finalHref = `/categories/business/${sub.id}/difficulty?aiTwin=${aiTwin}`;
+          return (
+            <Link
+              key={sub.id}
+              href={finalHref}
+              aria-label={`Select subcategory: ${sub.name}. Description: ${sub.description}`}
+              className="group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border-2 border-neonViolet/20 hover:border-neonCyan transition-all duration-300 shadow-[0_0_10px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:-translate-y-1 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neonCyan"
+            >
+              {/* Left absolute subtle neon glow line */}
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
 
-            <div>
-              {/* Header */}
-              <div className="flex justify-between items-center mb-4">
-                <span>{sub.icon}</span>
-                <span className="text-xs font-display tracking-widest text-neonCyan bg-neonCyan/10 border border-neonCyan/25 px-2.5 py-0.5 rounded font-bold">
-                  {sub.tag}
-                </span>
+              <div>
+                {/* Header */}
+                <div className="flex justify-between items-center mb-4">
+                  <span>{sub.icon}</span>
+                  <span className="text-xs font-display tracking-widest text-neonCyan bg-neonCyan/10 border border-neonCyan/25 px-2.5 py-0.5 rounded font-bold">
+                    {sub.tag}
+                  </span>
+                </div>
+
+                {/* Name */}
+                <h3 className="text-xl font-bold font-display tracking-wide text-textPrimary group-hover:text-neonCyan transition-colors duration-300 mb-2 uppercase">
+                  {sub.name}
+                </h3>
+
+                {/* Description */}
+                <p className="text-sm text-textMuted leading-relaxed">
+                  {sub.description}
+                </p>
               </div>
 
-              {/* Name */}
-              <h3 className="text-xl font-bold font-display tracking-wide text-textPrimary group-hover:text-neonCyan transition-colors duration-300 mb-2 uppercase">
-                {sub.name}
-              </h3>
-
-              {/* Description */}
-              <p className="text-sm text-textMuted leading-relaxed">
-                {sub.description}
-              </p>
-            </div>
-
-            {/* Action text */}
-            <div className="mt-6 flex items-center justify-end text-xs font-bold font-display tracking-wider text-neonViolet group-hover:text-neonCyan transition-colors duration-300 uppercase">
-              SELECT COMPILE →
-            </div>
-          </Link>
-        ))}
+              {/* Action text */}
+              <div className="mt-6 flex items-center justify-end text-xs font-bold font-display tracking-wider text-neonViolet group-hover:text-neonCyan transition-colors duration-300 uppercase">
+                SELECT COMPILE →
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Back to Categories Link */}
       <Link
-        href="/categories"
+        href={`/categories?aiTwin=${aiTwin}`}
         className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
       >
         ← RETREAT (CATEGORIES)
       </Link>
     </div>
+  );
+}
+
+export default function BusinessSubcategoriesPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-20 font-display text-textMuted">LOADING MAINBOARD...</div>}>
+      <BusinessSubcategoriesContent />
+    </Suspense>
   );
 }

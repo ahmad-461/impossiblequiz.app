@@ -17,6 +17,7 @@ interface LeaderboardEntry {
 
 const SECTORS = [
   { id: "all", label: "ALL SECTORS", tag: "ALL" },
+  { id: "daily_challenge", label: "DAILY CHALLENGE", tag: "DAILY" },
   { id: "programming", label: "PROGRAMMING", tag: "SYS.LANG" },
   { id: "business", label: "BUSINESS", tag: "BUS.MGMT" },
   { id: "english", label: "ENGLISH", tag: "ENG.LANG" },
@@ -33,6 +34,11 @@ const MOCK_LEADERBOARDS: LeaderboardEntry[] = [
 ];
 
 const getCategoryLabel = (cat: string): string => {
+  if (cat.startsWith("daily_")) {
+    const datePart = cat.replace("daily_", "");
+    return `Daily Run (${datePart})`;
+  }
+
   if (cat.startsWith("programming_")) {
     const parts = cat.split("_");
     const langRaw = parts[1] || "";
@@ -131,7 +137,9 @@ function LeaderboardContent() {
   useEffect(() => {
     const sessionResult = getUserSessionResult();
     if (sessionResult && sessionResult.category) {
-      if (sessionResult.category.startsWith("programming_")) {
+      if (sessionResult.category.startsWith("daily_")) {
+        setActiveCategory("daily_challenge");
+      } else if (sessionResult.category.startsWith("programming_")) {
         setActiveCategory("programming");
       } else if (sessionResult.category.startsWith("business_")) {
         setActiveCategory("business");
@@ -155,41 +163,76 @@ function LeaderboardContent() {
       const sessionStreak = sessionResult?.peakStreak || 0;
       const sessionCategory = sessionResult?.category || "programming";
 
+      // Calculate current date string for daily challenge checks
+      const now = new Date();
+      const dateString = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+      const todayDailyCategory = `daily_${dateString}`;
+
       const matchCategory = activeCategory === "all" ||
         sessionCategory === activeCategory ||
+        (activeCategory === "daily_challenge" && sessionCategory === todayDailyCategory) ||
         (activeCategory === "programming" && sessionCategory.startsWith("programming_")) ||
         (activeCategory === "business" && sessionCategory.startsWith("business_")) ||
         (activeCategory === "english" && sessionCategory.startsWith("english_"));
 
       try {
-        let query = supabase.from("leaderboard").select("id, nickname, score, streak, category");
+        let finalEntries: LeaderboardEntry[] = [];
 
-        if (activeCategory !== "all") {
-          if (activeCategory === "programming") {
-            query = query.or("category.eq.programming,category.like.programming_%");
-          } else if (activeCategory === "business") {
-            query = query.or("category.eq.business,category.like.business_%");
-          } else if (activeCategory === "english") {
-            query = query.or("category.eq.english,category.like.english_%");
-          } else {
-            query = query.eq("category", activeCategory);
+        if (activeCategory === "daily_challenge") {
+          // Fetch from daily_leaderboard table
+          const { data, error } = await supabase
+            .from("daily_leaderboard")
+            .select("id, nickname, score, streak, date")
+            .eq("date", dateString)
+            .order("score", { ascending: false })
+            .limit(10);
+
+          if (error) {
+            throw error;
           }
-        }
 
-        const { data, error } = await query.order("score", { ascending: false }).limit(10);
+          finalEntries = (data || []).map((item) => ({
+            id: String(item.id),
+            nickname: String(item.nickname || ""),
+            score: Number(item.score || 0),
+            streak: Number(item.streak || 0),
+            category: `daily_${item.date}`,
+            highlight: submittedId ? item.id === submittedId : false,
+          }));
+        } else {
+          // Standard categories fetch
+          let query = supabase.from("leaderboard").select("id, nickname, score, streak, category");
+
+          if (activeCategory !== "all") {
+            if (activeCategory === "programming") {
+              query = query.or("category.eq.programming,category.like.programming_%");
+            } else if (activeCategory === "business") {
+              query = query.or("category.eq.business,category.like.business_%");
+            } else if (activeCategory === "english") {
+              query = query.or("category.eq.english,category.like.english_%");
+            } else {
+              query = query.eq("category", activeCategory);
+            }
+          }
+
+          const { data, error } = await query.order("score", { ascending: false }).limit(10);
+          if (error) {
+            throw error;
+          }
+
+          finalEntries = (data || []).map((item) => ({
+            id: String(item.id),
+            nickname: String(item.nickname || ""),
+            score: Number(item.score || 0),
+            streak: Number(item.streak || 0),
+            category: String(item.category || ""),
+            highlight: submittedId ? item.id === submittedId : false,
+          }));
+        }
 
         if (error || !data || data.length === 0) {
           throw new Error("Supabase offline or empty");
         }
-
-        const finalEntries: LeaderboardEntry[] = (data as Array<{ id: string; nickname: string; score: number; streak: number; category: string }>).map((item) => ({
-          id: String(item.id),
-          nickname: String(item.nickname || ""),
-          score: Number(item.score || 0),
-          streak: Number(item.streak || 0),
-          category: String(item.category || ""),
-          highlight: submittedId ? item.id === submittedId : false,
-        }));
 
         const hasHighlighted = finalEntries.some((e) => e.highlight);
         if (!hasHighlighted && sessionResult && sessionResult.submitted) {
@@ -222,6 +265,9 @@ function LeaderboardContent() {
         let fallbackList = [...MOCK_LEADERBOARDS];
         if (activeCategory !== "all") {
           fallbackList = fallbackList.filter((e) => {
+            if (activeCategory === "daily_challenge") {
+              return e.category.startsWith("daily_");
+            }
             if (activeCategory === "programming") {
               return e.category === "programming" || e.category.startsWith("programming_");
             }

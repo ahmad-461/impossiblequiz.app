@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "The Impossible Quiz Generator — AI-Powered Trivia Mainframe",
   description: "Test your limits against the ultimate AI-generated impossible quiz. Dynamic difficulty progression, boss rounds, and custom topics powered by Gemini and our python engine.",
   keywords: ["impossible quiz", "ai trivia", "gemini quiz", "quiz generator", "esports trivia", "programming quiz"],
-  authors: [{ name: "Esports Quiz Team" }],
+  authors: [{ name: "Muhammad Ahmad Khan" }],
   icons: {
     icon: "/icon.svg",
   },

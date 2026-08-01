@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { Question } from "../../lib/questions";
+import SystemLogLoader from "../../components/SystemLogLoader";
 
 function QuizContent() {
   const searchParams = useSearchParams();
@@ -520,8 +521,7 @@ function QuizContent() {
   if (isLoading || !currentQuestion) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 rounded-full border-4 border-neonCyan border-t-transparent animate-spin mb-4"></div>
-        <span className="text-sm font-display tracking-widest text-textMuted uppercase">LOADING QUIZ VECTOR...</span>
+        <SystemLogLoader context="quiz" />
       </div>
     );
   }
@@ -738,8 +738,7 @@ export default function QuizPage() {
   return (
     <Suspense fallback={
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 rounded-full border-4 border-neonCyan border-t-transparent animate-spin mb-4"></div>
-        <span className="text-sm font-display tracking-widest text-textMuted uppercase">LOADING QUIZ VECTOR...</span>
+        <SystemLogLoader context="quiz" />
       </div>
     }>
       <QuizContent />

@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabase";
+import SystemLogLoader from "../../components/SystemLogLoader";
 
 interface LeaderboardEntry {
   id?: string;
@@ -216,11 +217,8 @@ function LeaderboardContent() {
         {/* Table Rows */}
         <div className="divide-y divide-neonViolet/10">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <div className="w-8 h-8 rounded-full border-2 border-neonCyan border-t-transparent animate-spin"></div>
-              <span className="text-xs tracking-widest text-textMuted uppercase font-semibold">
-                RETRIEVING MAINFRAME ARCHIVES...
-              </span>
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <SystemLogLoader context="leaderboard" />
             </div>
           ) : board.length === 0 ? (
             <div className="text-center py-20">
@@ -285,8 +283,7 @@ export default function LeaderboardPage() {
   return (
     <Suspense fallback={
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 rounded-full border-4 border-neonCyan border-t-transparent animate-spin mb-4"></div>
-        <span className="text-sm font-display tracking-widest text-textMuted uppercase">LOADING LEADERBOARD VECTOR...</span>
+        <SystemLogLoader context="leaderboard" />
       </div>
     }>
       <LeaderboardContent />

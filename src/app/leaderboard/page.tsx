@@ -286,8 +286,56 @@ function LeaderboardContent() {
         {/* Table Rows */}
         <div className="divide-y divide-neonViolet/10">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <div className="flex flex-col items-center justify-center py-10 gap-3 relative">
               <SystemLogLoader context="leaderboard" />
+
+              {/* CSS-based SSR/Hydration timeout fallback */}
+              <div className="ssr-timeout-fallback flex flex-col items-center justify-center text-center px-4 rounded max-w-md mx-auto border border-red-500/30 bg-red-950/20">
+                <span className="text-xs font-mono tracking-widest text-[#ef4444] uppercase font-black animate-pulse mb-2">
+                  ⚠️ CONNECTION TIMEOUT // HYDRATION VECTOR FAILURE
+                </span>
+                <p className="text-[11px] text-textMuted font-mono leading-relaxed max-w-sm">
+                  The client-side connection took too long to synchronize or JS hydration failed.
+                  Please check your internet connection or ensure your browser supports JavaScript.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-4 px-3 py-1.5 border border-red-500/40 hover:border-red-500 bg-red-500/10 text-red-400 rounded text-[10px] font-display tracking-widest uppercase transition-all duration-300 hover:shadow-[0_0_8px_rgba(239,68,68,0.3)] cursor-pointer"
+                >
+                  FORCE SYSTEM REBOOT
+                </button>
+              </div>
+
+              <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes showAfterTimeout {
+                  0%, 99% {
+                    opacity: 0;
+                    visibility: hidden;
+                    height: 0;
+                    margin-top: 0;
+                    padding: 0;
+                    border-width: 0;
+                  }
+                  100% {
+                    opacity: 1;
+                    visibility: visible;
+                    height: auto;
+                    margin-top: 1rem;
+                    padding: 1.5rem 1rem;
+                    border-width: 1px;
+                  }
+                }
+                .ssr-timeout-fallback {
+                  animation: showAfterTimeout 0.01s linear 8s forwards;
+                  opacity: 0;
+                  visibility: hidden;
+                  height: 0;
+                  overflow: hidden;
+                  margin-top: 0;
+                  padding: 0;
+                  border-width: 0;
+                }
+              `}} />
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-4">

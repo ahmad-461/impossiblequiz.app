@@ -31,7 +31,7 @@ export default function AITwinToggle({ enabled, onChange }: AITwinToggleProps) {
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <span className={`text-xs md:text-sm font-black font-display tracking-wider uppercase transition-colors duration-300 ${enabled ? "text-neonCyan" : "text-textPrimary"}`}>
-              AI TWIN MODE // {enabled ? "ONLINE" : "OFFLINE"}
+              AI TWIN MODE // {enabled ? "ACTIVE" : "INACTIVE"}
             </span>
             {enabled && (
               <span className="w-2 h-2 rounded-full bg-neonCyan animate-ping"></span>

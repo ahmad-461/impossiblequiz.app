@@ -110,6 +110,15 @@ function DodgingButton({ onCatch }: { onCatch: () => void }) {
   );
 }
 
+const BOOT_LINES = [
+  "INITIALIZING IQ-OS CORE MAINFRAME...",
+  "LOADING ADAPTIVE DIFFICULTY ENGINE...",
+  "ESTABLISHING SECURE DATABASE LINK...",
+  "SYNCING REAL-TIME QUESTION GENERATOR...",
+  "DECRYPTING SECURITY CHANNELS...",
+  "ACCESS GRANTED. WELCOME, OPERATOR.",
+];
+
 export default function Home() {
   // Live Preview Interactive State
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -119,8 +128,52 @@ export default function Home() {
   const [showBreachToast, setShowBreachToast] = useState(false);
   const [isGlitching, setIsGlitching] = useState(false);
 
+  // Boot Sequence States
+  const [showBoot, setShowBoot] = useState(false);
+  const [fadeBoot, setFadeBoot] = useState(false);
+  const [bootProgress, setBootProgress] = useState(0);
+
+  // Node Map Tooltip State
+  const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
+
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const glitchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Check if boot sequence already run in session
+    const completed = sessionStorage.getItem("boot_sequence_completed");
+    if (!completed) {
+      setShowBoot(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showBoot) return;
+
+    let timer: NodeJS.Timeout;
+    const nextLine = (idx: number) => {
+      if (idx < BOOT_LINES.length) {
+        setBootProgress(idx + 1);
+        timer = setTimeout(() => nextLine(idx + 1), 400);
+      } else {
+        timer = setTimeout(() => {
+          handleCompleteBoot();
+        }, 500);
+      }
+    };
+
+    nextLine(0);
+
+    return () => clearTimeout(timer);
+  }, [showBoot]);
+
+  const handleCompleteBoot = () => {
+    setFadeBoot(true);
+    sessionStorage.setItem("boot_sequence_completed", "true");
+    setTimeout(() => {
+      setShowBoot(false);
+    }, 500);
+  };
 
   useEffect(() => {
     // Print styled Console Easter Egg once on mount
@@ -177,6 +230,89 @@ export default function Home() {
 
   return (
     <div className="flex-1 flex flex-col items-center select-none relative overflow-hidden min-h-screen">
+      {/* Boot Sequence Full Screen Overlay */}
+      {showBoot && (
+        <div
+          style={{
+            backgroundColor: "#0a0b10",
+            transition: "opacity 0.5s ease-out",
+            opacity: fadeBoot ? 0 : 1,
+          }}
+          className="fixed inset-0 z-[100] flex flex-col justify-between p-8 md:p-16 select-none font-mono"
+        >
+          {/* Decorative Corner Grid Bars */}
+          <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-neonViolet/40"></div>
+          <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-neonViolet/40"></div>
+          <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-neonViolet/40"></div>
+          <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-neonViolet/40"></div>
+
+          {/* Core Boot Sequence Terminal Output */}
+          <div className="max-w-xl mx-auto w-full flex-1 flex flex-col justify-center">
+            {/* Fake terminal header decoration */}
+            <div className="flex items-center gap-1.5 border-b border-neonViolet/10 pb-3 mb-6 select-none">
+              <div className="w-2.5 h-2.5 rounded-full bg-neonViolet animate-pulse"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-neonCyan"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-textMuted/40"></div>
+              <span className="text-[10px] text-textMuted/60 uppercase ml-2 tracking-widest font-bold">
+                IQ-OS // SYS_BOOT_SEQUENCE_v1.0
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {BOOT_LINES.slice(0, bootProgress).map((line, index) => {
+                const isLast = index === bootProgress - 1;
+                const isAccessGranted = index === BOOT_LINES.length - 1;
+                return (
+                  <div
+                    key={index}
+                    className={`text-xs md:text-sm tracking-wider font-bold transition-all duration-300 ${
+                      isAccessGranted
+                        ? "text-neonCyan drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] scale-105 origin-left"
+                        : isLast
+                        ? "text-neonViolet animate-pulse"
+                        : "text-textMuted"
+                    }`}
+                  >
+                    &gt; {line}
+                  </div>
+                );
+              })}
+              {bootProgress < BOOT_LINES.length && (
+                <div className="text-xs text-neonViolet animate-pulse flex items-center gap-1.5 mt-2">
+                  <span>&gt; BOOTING</span>
+                  <span className="inline-block w-1.5 h-4 bg-neonViolet animate-blink"></span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Skip Button Placement: bottom-right corner, small neon-accented monospace */}
+          <div className="flex justify-end w-full relative z-10">
+            <button
+              onClick={handleCompleteBoot}
+              style={{
+                borderColor: "#a855f7",
+                color: "#a855f7",
+                backgroundColor: "rgba(168, 85, 247, 0.05)",
+              }}
+              className="px-4 py-2 border rounded font-mono text-[10px] tracking-widest uppercase hover:bg-neonViolet/10 hover:text-textPrimary hover:shadow-[0_0_10px_rgba(168,85,247,0.3)] transition-all duration-200 cursor-pointer"
+            >
+              SKIP BOOT
+            </button>
+          </div>
+
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes blink {
+              0%, 100% { opacity: 0; }
+              50% { opacity: 1; }
+            }
+            .animate-blink {
+              animation: blink 0.8s infinite;
+            }
+          `}} />
+        </div>
+      )}
+
       {/* Retrained atmospheric layer: subtle slow-moving gradient glow */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes drift-glow {
@@ -381,51 +517,170 @@ export default function Home() {
       {/* 2. HOW IT WORKS / SYSTEM ARCHITECTURE */}
       <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-16 border-t border-neonViolet/15">
         <ScrollReveal>
-          <h2 className="text-xs font-black font-display tracking-widest text-neonCyan uppercase mb-12 text-center">
+          <h2 className="text-xs font-black font-display tracking-widest text-neonCyan uppercase mb-8 text-center">
             SYSTEM_ARCHITECTURE // MAIN_FEATURES
           </h2>
         </ScrollReveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Feature 1 */}
+        {/* Compact Concept Copy Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
           <ScrollReveal>
-            <div className="p-6 rounded-lg bg-bgDark border border-neonViolet/20 shadow-[0_0_12px_rgba(168,85,247,0.01)] hover:border-neonCyan hover:shadow-[0_0_18px_rgba(34,211,238,0.1)] transition-all duration-300 relative group h-full">
-              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
-              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-3">
+            <div className="p-4 rounded border border-neonViolet/10 bg-bgDark/40 text-center h-full hover:border-neonCyan/30 transition-colors duration-300">
+              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-1.5">
                 01 // DYNAMIC GENERATION
               </div>
-              <h3 className="text-base font-bold font-display text-textPrimary uppercase mb-2">Real-Time Synthesis</h3>
               <p className="text-xs text-textMuted leading-relaxed">
                 Every trivia challenge is forged in real time by the Gemini core mainframe — ensuring no two sessions are ever identical.
               </p>
             </div>
           </ScrollReveal>
 
-          {/* Feature 2 */}
           <ScrollReveal>
-            <div className="p-6 rounded-lg bg-bgDark border border-neonViolet/20 shadow-[0_0_12px_rgba(168,85,247,0.01)] hover:border-neonCyan hover:shadow-[0_0_18px_rgba(34,211,238,0.1)] transition-all duration-300 relative group h-full">
-              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
-              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-3">
+            <div className="p-4 rounded border border-neonViolet/10 bg-bgDark/40 text-center h-full hover:border-neonCyan/30 transition-colors duration-300">
+              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-1.5">
                 02 // ADAPTIVE ENGINE
               </div>
-              <h3 className="text-base font-bold font-display text-textPrimary uppercase mb-2">Dynamic Difficulty</h3>
               <p className="text-xs text-textMuted leading-relaxed">
                 Our lightweight Python serverless engine computes your trajectory after every answer to adapt challenges to your caliber.
               </p>
             </div>
           </ScrollReveal>
 
-          {/* Feature 3 */}
           <ScrollReveal>
-            <div className="p-6 rounded-lg bg-bgDark border border-neonViolet/20 shadow-[0_0_12px_rgba(168,85,247,0.01)] hover:border-neonCyan hover:shadow-[0_0_18px_rgba(34,211,238,0.1)] transition-all duration-300 relative group h-full">
-              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
-              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-3">
+            <div className="p-4 rounded border border-neonViolet/10 bg-bgDark/40 text-center h-full hover:border-neonCyan/30 transition-colors duration-300">
+              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-1.5">
                 03 // CORE BOSS ROUND
               </div>
-              <h3 className="text-base font-bold font-display text-textPrimary uppercase mb-2">Hall of Champions</h3>
               <p className="text-xs text-textMuted leading-relaxed">
                 Survive 3 consecutive Hard problems to activate the ultimate Boss Security layer. Clear it to etch your handle on our leaderboard.
               </p>
+            </div>
+          </ScrollReveal>
+        </div>
+
+        {/* Interactive Category Node Map */}
+        <div className="w-full max-w-5xl mx-auto py-8">
+          <ScrollReveal>
+            <div className="max-w-4xl mx-auto text-center mb-8">
+              <h3 className="text-xs font-black font-display tracking-widest text-neonViolet uppercase mb-2">
+                MAINFRAME // SECTOR_NODE_MAP
+              </h3>
+              <p className="text-[10px] text-textMuted uppercase tracking-wider font-semibold">
+                Hover/Focus a node to view sector metrics // Click to establish direct link
+              </p>
+            </div>
+
+            {/* Svg and Node constellation container */}
+            <div className="relative w-full max-w-3xl mx-auto aspect-[800/480] bg-bgDark/20 border border-neonViolet/15 rounded-lg overflow-hidden shadow-[0_0_35px_rgba(168,85,247,0.03)]">
+              {/* SVG Background Lines */}
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                viewBox="0 0 800 480"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Connections with Dual Lines for Glow and High Fidelity */}
+                {[
+                  { x1: 150, y1: 100, x2: 400, y2: 70 }, // Prog -> Logic
+                  { x1: 400, y1: 70, x2: 650, y2: 100 }, // Logic -> Data
+                  { x1: 650, y1: 100, x2: 650, y2: 380 }, // Data -> Eng
+                  { x1: 650, y1: 380, x2: 400, y2: 410 }, // Eng -> Business
+                  { x1: 400, y1: 410, x2: 150, y2: 380 }, // Business -> CS Fundamentals
+                  { x1: 150, y1: 380, x2: 150, y2: 100 }, // CS Fundamentals -> Prog
+                  { x1: 150, y1: 100, x2: 150, y2: 380 }, // Vertical Divider: Prog -> CS Fundamentals
+                  { x1: 400, y1: 70, x2: 400, y2: 410 }, // Vertical Divider: Logic -> Business
+                  { x1: 650, y1: 100, x2: 650, y2: 380 }, // Vertical Divider: Data -> Eng
+                ].map((line, i) => (
+                  <g key={i}>
+                    <line
+                      x1={line.x1}
+                      y1={line.y1}
+                      x2={line.x2}
+                      y2={line.y2}
+                      stroke="#a855f7"
+                      strokeWidth="3.5"
+                      strokeOpacity="0.15"
+                    />
+                    <line
+                      x1={line.x1}
+                      y1={line.y1}
+                      x2={line.x2}
+                      y2={line.y2}
+                      stroke="#22d3ee"
+                      strokeWidth="1.2"
+                      strokeOpacity="0.6"
+                    />
+                  </g>
+                ))}
+              </svg>
+
+              {/* Interactive HTML Buttons positioned precisely using coordinate-to-percentage conversion */}
+              {categories.map((cat) => {
+                // Determine layout coordinates
+                let left = "50%";
+                let top = "50%";
+                if (cat.id === "programming") { left = "18.75%"; top = "20.83%"; }
+                else if (cat.id === "logic-algorithms") { left = "50%"; top = "14.58%"; }
+                else if (cat.id === "data-analytics") { left = "81.25%"; top = "20.83%"; }
+                else if (cat.id === "computer-science-fundamentals") { left = "18.75%"; top = "79.17%"; }
+                else if (cat.id === "business") { left = "50%"; top = "85.42%"; }
+                else if (cat.id === "english") { left = "81.25%"; top = "79.17%"; }
+
+                return (
+                  <div
+                    key={cat.id}
+                    style={{ left, top }}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 group z-10"
+                  >
+                    {/* Interactive Link/Button Node */}
+                    <Link
+                      href={cat.href}
+                      aria-label={`Enter sector: ${cat.title}. Description: ${cat.desc}`}
+                      onMouseEnter={() => setActiveTooltipId(cat.id)}
+                      onMouseLeave={() => setActiveTooltipId(null)}
+                      onFocus={() => setActiveTooltipId(cat.id)}
+                      onBlur={() => setActiveTooltipId(null)}
+                      className="relative w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#0a0b10] border-2 border-neonViolet/30 hover:border-neonCyan focus:border-neonCyan hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] focus:shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all duration-300 flex items-center justify-center cursor-pointer outline-none group-hover:scale-105 active:scale-95 [&_svg]:w-6 [&_svg]:h-6 md:[&_svg]:w-7 md:[&_svg]:h-7"
+                    >
+                      {/* Inner glowing effect */}
+                      <div className="absolute inset-0.5 rounded-full bg-[#0a0b10] border border-neonViolet/10 group-hover:border-neonCyan/30 transition-colors duration-300 flex items-center justify-center">
+                        <div className="text-neonCyan group-hover:text-neonViolet transition-colors duration-300 flex items-center justify-center">
+                          {cat.icon}
+                        </div>
+                      </div>
+                    </Link>
+
+                    {/* Node Label (shows name under/above the node) */}
+                    <span className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[9px] font-bold tracking-widest text-textMuted uppercase group-hover:text-neonCyan transition-colors duration-300">
+                      {cat.title === "Computer Science Fundamentals" ? "CS FUNDAMENTALS" : cat.title}
+                    </span>
+
+                    {/* Styled absolute-positioned Tooltip */}
+                    {activeTooltipId === cat.id && (
+                      <div
+                        style={{
+                          borderColor: "#22d3ee",
+                          backgroundColor: "#0a0b10",
+                          boxShadow: "0 0 15px rgba(34, 211, 238, 0.25)",
+                        }}
+                        className="absolute z-30 bottom-[calc(100%+14px)] left-1/2 -translate-x-1/2 p-3.5 rounded border w-60 text-center select-none pointer-events-none animate-page-fade font-mono"
+                      >
+                        {/* Decorative header */}
+                        <div className="flex justify-between items-center mb-1.5 text-[8px] text-neonCyan tracking-widest uppercase font-bold">
+                          <span>[{cat.tag}]</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-neonCyan animate-pulse"></span>
+                        </div>
+                        <div className="text-[11px] font-bold text-textPrimary uppercase mb-1 font-display">
+                          {cat.title}
+                        </div>
+                        <p className="text-[10px] text-textMuted leading-relaxed normal-case">
+                          {cat.desc}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </ScrollReveal>
         </div>

@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import ScrollReveal from "../components/ScrollReveal";
 import { categories } from "../lib/categories";
+import { staticQuestions } from "../lib/questions";
+import { supabase } from "../../lib/supabase";
 
 function DodgingButton({ onCatch }: { onCatch: () => void }) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -114,6 +116,18 @@ export default function Home() {
   // Live Preview Interactive State
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [featuredQuestion, setFeaturedQuestion] = useState<{
+    questionText: string;
+    options: string[];
+    correctAnswerIndex: number;
+    difficulty: string;
+  }>({
+    questionText: "In Python, what is the output of [x for x in range(5) if x % 2 == 0]?",
+    options: ["[1, 3]", "[0, 2, 4]", "[2, 4]", "[0, 1, 2, 3, 4]"],
+    correctAnswerIndex: 1,
+    difficulty: "medium",
+  });
+  const [contendersCount, setContendersCount] = useState<string>("150+");
 
   // Easter Egg States
   const [showBreachToast, setShowBreachToast] = useState(false);
@@ -129,6 +143,36 @@ export default function Home() {
       "color: #a855f7; font-weight: bold; font-family: monospace; text-shadow: 0 0 5px rgba(168, 85, 247, 0.5); font-size: 11px;",
       "color: #22d3ee; font-weight: bold; font-family: monospace; font-size: 12px; padding-top: 10px;"
     );
+
+    // Select a random question from staticQuestions to avoid hydration mismatches
+    if (staticQuestions && staticQuestions.length > 0) {
+      const randIdx = Math.floor(Math.random() * staticQuestions.length);
+      const q = staticQuestions[randIdx];
+      setFeaturedQuestion({
+        questionText: q.questionText,
+        options: q.options,
+        correctAnswerIndex: q.correctAnswerIndex,
+        difficulty: q.difficulty,
+      });
+    }
+
+    async function fetchContenders() {
+      try {
+        const { count, error } = await supabase
+          .from("leaderboard")
+          .select("*", { count: "exact", head: true });
+
+        if (!error && count !== null && count !== undefined) {
+          setContendersCount(String(count));
+        } else {
+          setContendersCount("150+");
+        }
+      } catch (e) {
+        console.warn("Failed to fetch leaderboard count:", e);
+        setContendersCount("150+");
+      }
+    }
+    fetchContenders();
 
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -153,12 +197,6 @@ export default function Home() {
     glitchTimerRef.current = setTimeout(() => {
       setIsGlitching(false);
     }, 1500);
-  };
-
-  const featuredQuestion = {
-    questionText: "In Python, what is the output of [x for x in range(5) if x % 2 == 0]?",
-    options: ["[1, 3]", "[0, 2, 4]", "[2, 4]", "[0, 1, 2, 3, 4]"],
-    correctAnswerIndex: 1,
   };
 
   const handleOptionSelect = (idx: number) => {
@@ -189,6 +227,19 @@ export default function Home() {
                       radial-gradient(circle at 80% 75%, rgba(34, 211, 238, 0.06) 0%, rgba(10, 11, 16, 0) 60%);
           background-size: 200% 200%;
           animation: drift-glow 25s ease-in-out infinite;
+        }
+        @keyframes trick-card-pulse {
+          0%, 100% {
+            border-color: rgba(168, 85, 247, 0.3);
+            box-shadow: 0 0 8px rgba(168, 85, 247, 0.1);
+          }
+          50% {
+            border-color: rgba(168, 85, 247, 0.7);
+            box-shadow: 0 0 16px rgba(168, 85, 247, 0.25);
+          }
+        }
+        .trick-card-pulse {
+          animation: trick-card-pulse 3s infinite ease-in-out;
         }
       `}} />
 
@@ -268,8 +319,10 @@ export default function Home() {
                 <div className="text-[9px] uppercase tracking-widest text-textMuted mt-1 font-semibold">Sectors Available</div>
               </div>
               <div>
-                <div className="text-xl md:text-2xl font-black text-neonViolet font-display">100%</div>
-                <div className="text-[9px] uppercase tracking-widest text-textMuted mt-1 font-semibold">Difficulty Vector</div>
+                <div className="text-xl md:text-2xl font-black text-neonViolet font-display">
+                  {contendersCount}
+                </div>
+                <div className="text-[9px] uppercase tracking-widest text-textMuted mt-1 font-semibold">Leaderboard Contenders</div>
               </div>
               <div>
                 <div className="text-xl md:text-2xl font-black text-neonCyan font-display">LIVE</div>
@@ -290,7 +343,7 @@ export default function Home() {
                 {/* Card Header Info */}
                 <div className="flex justify-between items-center mb-6">
                   <span className="text-[9px] font-display tracking-widest px-2.5 py-1 rounded uppercase border text-neonCyan bg-neonCyan/10 border-neonCyan/25 font-bold">
-                    DIFFICULTY: medium
+                    DIFFICULTY: {featuredQuestion.difficulty || "medium"}
                   </span>
                   <span className="text-[9px] font-display tracking-widest text-textMuted font-bold uppercase flex items-center gap-1.5 animate-pulse">
                     <span className="w-1.5 h-1.5 rounded-full bg-neonCyan"></span>
@@ -497,9 +550,22 @@ export default function Home() {
       </div>
 
       {/* Decoy Button Container */}
-      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 pb-16 flex justify-end h-16 relative">
-        <div className="relative">
-          <DodgingButton onCatch={triggerCatch} />
+      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 pb-24 flex justify-end relative">
+        <div className="border border-dashed border-neonViolet/30 bg-bgDark/60 p-4 rounded-lg relative max-w-[320px] w-full shadow-[0_0_15px_rgba(168,85,247,0.1)] hover:border-neonViolet/60 transition-all duration-300 ease-in-out trick-card-pulse select-none overflow-visible">
+          {/* Card Label */}
+          <div className="absolute -top-3 left-4 bg-bgDark px-2 text-[10px] font-display font-bold tracking-widest text-neonViolet border border-neonViolet/30 rounded uppercase select-none">
+            [TRICK_CORE_V1.0]
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="text-[10px] font-mono text-textMuted tracking-wider leading-relaxed select-none">
+              &gt; COGNITIVE BYPASS PROTOCOL: <span className="text-neonCyan animate-pulse">ACTIVE</span>
+            </div>
+            {/* Height 12/48px container with overflow-visible to let button escape */}
+            <div className="relative h-12 flex items-center justify-center overflow-visible">
+              <DodgingButton onCatch={triggerCatch} />
+            </div>
+          </div>
         </div>
       </div>
 

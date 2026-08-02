@@ -99,7 +99,8 @@ export default function Header() {
             {/* Terminal Prefix styled brand lockup */}
             <div className="flex items-center font-mono text-xs sm:text-sm md:text-base tracking-wider select-none">
               <span className="text-neonViolet font-bold mr-1">[IQ-OS]</span>
-              <span className="text-neonCyan">guest@impossiblequiz:~$</span>
+              <span className="text-neonCyan hidden sm:inline">guest@impossiblequiz:~$</span>
+              <span className="text-neonCyan inline sm:hidden">guest@iq:~$</span>
               <span className="text-neonCyan ml-1 terminal-blink font-bold">_</span>
             </div>
           </Link>

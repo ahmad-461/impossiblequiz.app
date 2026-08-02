@@ -123,10 +123,16 @@ function getFallbackQuestion(
 function isValidQuestion(json: unknown): json is GeminiQuestion {
   if (!json || typeof json !== "object") return false;
   const q = json as Record<string, unknown>;
-  if (typeof q.question !== "string" || q.question.trim().length === 0) return false;
+  // Question text must be a string and at least 15 characters long to prevent broken or truncated outputs
+  if (typeof q.question !== "string" || q.question.trim().length < 15) return false;
   if (!Array.isArray(q.options) || q.options.length !== 4) return false;
   if (q.options.some((opt: unknown) => typeof opt !== "string" || opt.trim().length === 0)) return false;
-  if (typeof q.correctAnswerIndex !== "number" || q.correctAnswerIndex < 0 || q.correctAnswerIndex > 3) return false;
+  if (
+    typeof q.correctAnswerIndex !== "number" ||
+    !Number.isInteger(q.correctAnswerIndex) ||
+    q.correctAnswerIndex < 0 ||
+    q.correctAnswerIndex > 3
+  ) return false;
   return true;
 }
 
@@ -260,18 +266,30 @@ async function fetchAndValidate(
   language?: string,
   subcategory?: string,
   categoryType?: "programming" | "business" | "english"
-): Promise<GeminiQuestion | null> {
+): Promise<{ question: GeminiQuestion | null; validationFailed: boolean }> {
+  let validationFailed = false;
+
   // Try 1
-  let result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language, subcategory, categoryType);
-  if (result && isValidQuestion(result)) {
-    return result;
+  const result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language, subcategory, categoryType);
+  if (result) {
+    if (isValidQuestion(result)) {
+      return { question: result, validationFailed: false };
+    } else {
+      validationFailed = true;
+    }
   }
+
   // Try 2 (Retry once)
-  result = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language, subcategory, categoryType);
-  if (result && isValidQuestion(result)) {
-    return result;
+  const result2 = await callGemini(category, difficulty, alreadyAskedTexts, isBossRound, language, subcategory, categoryType);
+  if (result2) {
+    if (isValidQuestion(result2)) {
+      return { question: result2, validationFailed: false };
+    } else {
+      validationFailed = true;
+    }
   }
-  return null;
+
+  return { question: null, validationFailed };
 }
 
 export async function POST(request: Request) {
@@ -332,7 +350,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch from Gemini and Validate
-    const geminiResult = await fetchAndValidate(
+    const { question: geminiResult, validationFailed } = await fetchAndValidate(
       targetCategory,
       targetDifficulty,
       alreadyAskedTexts,
@@ -360,7 +378,11 @@ export async function POST(request: Request) {
       });
     } else {
       if (process.env.NODE_ENV === "development") {
-        console.warn("[DEV MODE] Relying on static question pool fallback instead of a live Gemini API response.");
+        if (validationFailed) {
+          console.warn("[DEV MODE] Gemini question validation failed after retries. Falling back to static question pool.");
+        } else {
+          console.warn("[DEV MODE] Relying on static question pool fallback instead of a live Gemini API response.");
+        }
       }
       // Fallback seamlessly to Static Question
       const fallbackQuestion = getFallbackQuestion(

@@ -4,6 +4,7 @@ import { use, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AITwinToggle from "../../../../../components/AITwinToggle";
+import SystemLogLoader from "../../../../../components/SystemLogLoader";
 
 interface PageProps {
   params: Promise<{ language: string }>;
@@ -175,7 +176,7 @@ function DifficultyContent({ params }: PageProps) {
       {/* Back to Languages Link */}
       <Link
         href={`/categories/programming/languages?aiTwin=${aiTwin}`}
-        className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
+        className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-300 ease-in-out uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
       >
         ← BACK TO LANGUAGES
       </Link>
@@ -185,7 +186,7 @@ function DifficultyContent({ params }: PageProps) {
 
 export default function DifficultyPage({ params }: PageProps) {
   return (
-    <Suspense fallback={<div className="text-center py-20 font-display text-textMuted">LOADING DIAGNOSTICS...</div>}>
+    <Suspense fallback={<SystemLogLoader context="difficulty" />}>
       <DifficultyContent params={params} />
     </Suspense>
   );

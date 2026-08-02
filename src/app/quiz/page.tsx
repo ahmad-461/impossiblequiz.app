@@ -93,6 +93,34 @@ const parseCategoryInfo = (id: string) => {
     };
   }
 
+  if (id.startsWith("logic-algorithms_") || id.startsWith("data-analytics_") || id.startsWith("computer-science-fundamentals_")) {
+    const parts = id.split("_");
+    const catRaw = parts[0];
+    const diffRaw = parts[1] || "";
+
+    const catMapping: Record<string, string> = {
+      "logic-algorithms": "Logic/Algorithms",
+      "data-analytics": "Data Analytics",
+      "computer-science-fundamentals": "Computer Science Fundamentals",
+    };
+
+    const formattedDiff = diffRaw.charAt(0).toUpperCase() + diffRaw.slice(1);
+
+    const labelMap: Record<string, string> = {
+      "logic-algorithms": "ALG.COMP",
+      "data-analytics": "DAT.SCALE",
+      "computer-science-fundamentals": "SYS.CORE",
+    };
+
+    return {
+      isExtendedProgramming: true,
+      language: "",
+      difficulty: diffRaw as "easy" | "medium" | "hard" | "impossible",
+      label: labelMap[catRaw] || "SYS.CORE",
+      displayName: `${catMapping[catRaw] || catRaw.replace("-", " ")} (${formattedDiff})`
+    };
+  }
+
   const labelMap: Record<string, string> = {
     programming: "SYS.LANG",
     "logic-algorithms": "ALG.COMP",
@@ -209,7 +237,7 @@ function QuizContent() {
         aiStreak: twinStreak,
         aiPeakStreak: twinPeakStreak,
       };
-      const sessionKey = categoryId.startsWith("programming_") || categoryId.startsWith("business_") || categoryId.startsWith("english_")
+      const sessionKey = categoryId.includes("_")
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
       sessionStorage.setItem(sessionKey, JSON.stringify(stateObj));
@@ -221,7 +249,7 @@ function QuizContent() {
   // Helper to clear session state from sessionStorage
   const clearSessionState = () => {
     try {
-      const sessionKey = categoryId.startsWith("programming_") || categoryId.startsWith("business_") || categoryId.startsWith("english_")
+      const sessionKey = categoryId.includes("_")
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
       sessionStorage.removeItem(sessionKey);
@@ -261,9 +289,15 @@ function QuizContent() {
 
       if (response.ok) {
         const data = await response.json();
+        if (data.source && data.source !== "gemini" && process.env.NODE_ENV === "development") {
+          console.warn("[DEV MODE] Quiz client is using static question pool fallback instead of a live Gemini API response.");
+        }
         return data.question;
       }
     } catch (e) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[DEV MODE] Quiz client is using static question pool fallback instead of a live Gemini API response.");
+      }
       console.error("Failed to fetch question from API:", e);
     }
     return null;
@@ -376,7 +410,7 @@ function QuizContent() {
     const initializeQuiz = async () => {
       setIsLoading(true);
 
-      const sessionKey = categoryId.startsWith("programming_") || categoryId.startsWith("business_") || categoryId.startsWith("english_")
+      const sessionKey = categoryId.includes("_")
         ? `active_quiz_session_${categoryId}`
         : "active_quiz_session";
 
@@ -1123,14 +1157,14 @@ function QuizContent() {
                 onClick={() => handleOptionSelect(idx)}
                 disabled={selectionState === "selected"}
                 aria-label={`Option ${letters[idx]}: ${option}`}
-                className={`group flex items-center p-4 rounded border text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neonCyan ${
+                className={`group flex items-center p-4 rounded border text-left transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-neonCyan ${
                   selectionState === "selected" ? "cursor-not-allowed" : "cursor-pointer"
                 } ${borderClass}`}
               >
-                <span className={`w-8 h-8 rounded flex items-center justify-center font-display font-bold mr-4 transition-colors duration-200 border ${letterBgClass}`}>
+                <span className={`w-8 h-8 rounded flex items-center justify-center font-display font-bold mr-4 transition-colors duration-300 ease-in-out border ${letterBgClass}`}>
                   {letters[idx]}
                 </span>
-                <span className={`text-sm font-semibold transition-colors duration-200 flex-1 ${textClass}`}>
+                <span className={`text-sm font-semibold transition-colors duration-300 ease-in-out flex-1 ${textClass}`}>
                   {option}
                 </span>
               </button>

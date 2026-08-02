@@ -433,7 +433,7 @@ Link: ${shareUrl}`;
             🤖 AI TWIN SECTOR // HEAD-TO-HEAD COMPARISON
           </h2>
 
-          <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto mb-4">
             {/* Player Stats */}
             <div className="flex flex-col gap-2 p-3 rounded bg-bgDark border border-neonCyan/20">
               <span className="text-[10px] text-textMuted uppercase tracking-widest">YOU (PLAYER)</span>
@@ -630,6 +630,8 @@ Link: ${shareUrl}`;
               ? `/categories/business/${activeResult.category.split("_")[1] || "marketing"}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
               : activeResult.category.startsWith("english_")
               ? `/categories/english/${activeResult.category.split("_")[1] || "grammar"}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
+              : activeResult.category.startsWith("logic-algorithms_") || activeResult.category.startsWith("data-analytics_") || activeResult.category.startsWith("computer-science-fundamentals_")
+              ? `/categories/${activeResult.category.split("_")[0]}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
               : `/categories?aiTwin=${activeResult.aiTwinEnabled}`
           }
           className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet"
@@ -649,7 +651,7 @@ Link: ${shareUrl}`;
       {/* Home retreat option */}
       <Link
         href="/"
-        className="mt-12 text-xs font-display tracking-widest text-textMuted hover:text-neonCyan transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonCyan/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonCyan"
+        className="mt-12 text-xs font-display tracking-widest text-textMuted hover:text-neonCyan transition-colors duration-300 ease-in-out uppercase border-b border-textMuted/20 hover:border-neonCyan/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonCyan"
       >
         ← ESCAPE TO HEADQUARTERS (HOME)
       </Link>

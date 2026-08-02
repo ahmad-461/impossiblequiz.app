@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabase";
 import SystemLogLoader from "../../components/SystemLogLoader";
@@ -25,12 +25,6 @@ const SECTORS = [
   { id: "computer-science-fundamentals", label: "CS FUNDAMENTALS", tag: "SYS.CORE" },
 ];
 
-const MOCK_LEADERBOARDS: LeaderboardEntry[] = [
-  { id: "mock_1", nickname: "Slayer_Dev", score: 9980, streak: 8, category: "computer-science-fundamentals" },
-  { id: "mock_2", nickname: "NullPointerEx", score: 9450, streak: 7, category: "programming" },
-  { id: "mock_3", nickname: "DataWizard_88", score: 9120, streak: 6, category: "data-analytics" },
-  { id: "mock_4", nickname: "ByteCommander", score: 8840, streak: 5, category: "logic-algorithms" },
-];
 
 const getCategoryLabel = (cat: string): string => {
   if (cat.startsWith("programming_")) {
@@ -113,7 +107,7 @@ function LeaderboardContent() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isOffline, setIsOffline] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Retrieve user results state from sessionStorage
   const getUserSessionResult = () => {
@@ -143,127 +137,104 @@ function LeaderboardContent() {
     }
   }, []);
 
-  useEffect(() => {
-    async function loadLeaderboard() {
-      setLoading(true);
-      setIsOffline(false);
+  const loadLeaderboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-      const sessionResult = getUserSessionResult();
-      const submittedId = sessionResult?.submittedId;
-      const sessionNickname = sessionResult?.nickname || "You (Survivor)";
-      const sessionScore = sessionResult?.score || 0;
-      const sessionStreak = sessionResult?.peakStreak || 0;
-      const sessionCategory = sessionResult?.category || "programming";
+    const sessionResult = getUserSessionResult();
+    const submittedId = sessionResult?.submittedId;
+    const sessionNickname = sessionResult?.nickname || "You (Survivor)";
+    const sessionScore = sessionResult?.score || 0;
+    const sessionStreak = sessionResult?.peakStreak || 0;
+    const sessionCategory = sessionResult?.category || "programming";
 
-      const matchCategory = activeCategory === "all" ||
-        sessionCategory === activeCategory ||
-        (activeCategory === "programming" && sessionCategory.startsWith("programming_")) ||
-        (activeCategory === "business" && sessionCategory.startsWith("business_")) ||
-        (activeCategory === "english" && sessionCategory.startsWith("english_"));
+    const matchCategory = activeCategory === "all" ||
+      sessionCategory === activeCategory ||
+      (activeCategory === "programming" && sessionCategory.startsWith("programming_")) ||
+      (activeCategory === "business" && sessionCategory.startsWith("business_")) ||
+      (activeCategory === "english" && sessionCategory.startsWith("english_"));
 
-      try {
-        let query = supabase.from("leaderboard").select("id, nickname, score, streak, category");
+    try {
+      let query = supabase.from("leaderboard").select("id, nickname, score, streak, category");
 
-        if (activeCategory !== "all") {
-          if (activeCategory === "programming") {
-            query = query.or("category.eq.programming,category.like.programming_%");
-          } else if (activeCategory === "business") {
-            query = query.or("category.eq.business,category.like.business_%");
-          } else if (activeCategory === "english") {
-            query = query.or("category.eq.english,category.like.english_%");
-          } else {
-            query = query.eq("category", activeCategory);
-          }
+      if (activeCategory !== "all") {
+        if (activeCategory === "programming") {
+          query = query.or("category.eq.programming,category.like.programming_%");
+        } else if (activeCategory === "business") {
+          query = query.or("category.eq.business,category.like.business_%");
+        } else if (activeCategory === "english") {
+          query = query.or("category.eq.english,category.like.english_%");
+        } else {
+          query = query.eq("category", activeCategory);
         }
-
-        const { data, error } = await query.order("score", { ascending: false }).limit(10);
-
-        if (error || !data || data.length === 0) {
-          throw new Error("Supabase offline or empty");
-        }
-
-        const finalEntries: LeaderboardEntry[] = (data as Array<{ id: string; nickname: string; score: number; streak: number; category: string }>).map((item) => ({
-          id: String(item.id),
-          nickname: String(item.nickname || ""),
-          score: Number(item.score || 0),
-          streak: Number(item.streak || 0),
-          category: String(item.category || ""),
-          highlight: submittedId ? item.id === submittedId : false,
-        }));
-
-        const hasHighlighted = finalEntries.some((e) => e.highlight);
-        if (!hasHighlighted && sessionResult && sessionResult.submitted) {
-          if (matchCategory) {
-            const userEntry: LeaderboardEntry = {
-              id: submittedId || "user_run",
-              nickname: sessionNickname,
-              score: sessionScore,
-              streak: sessionStreak,
-              category: sessionCategory,
-              highlight: true,
-            };
-            finalEntries.push(userEntry);
-          }
-        }
-
-        finalEntries.sort((a, b) => b.score - a.score);
-
-        const rankedBoard = finalEntries.map((entry, idx) => {
-          const rankNum = idx + 1;
-          const rankStr = rankNum < 10 ? `0${rankNum}` : `${rankNum}`;
-          return { ...entry, rank: rankStr };
-        });
-
-        setBoard(rankedBoard);
-      } catch (err) {
-        console.warn("Load leaderboard failed, fallback to local:", err);
-        setIsOffline(true);
-
-        let fallbackList = [...MOCK_LEADERBOARDS];
-        if (activeCategory !== "all") {
-          fallbackList = fallbackList.filter((e) => {
-            if (activeCategory === "programming") {
-              return e.category === "programming" || e.category.startsWith("programming_");
-            }
-            if (activeCategory === "business") {
-              return e.category === "business" || e.category.startsWith("business_");
-            }
-            if (activeCategory === "english") {
-              return e.category === "english" || e.category.startsWith("english_");
-            }
-            return e.category === activeCategory;
-          });
-        }
-
-        if (sessionResult) {
-          if (matchCategory) {
-            fallbackList.push({
-              id: "local_user",
-              nickname: sessionNickname,
-              score: sessionScore,
-              streak: sessionStreak,
-              category: sessionCategory,
-              highlight: true,
-            });
-          }
-        }
-
-        fallbackList.sort((a, b) => b.score - a.score);
-
-        const rankedFallback = fallbackList.map((entry, idx) => {
-          const rankNum = idx + 1;
-          const rankStr = rankNum < 10 ? `0${rankNum}` : `${rankNum}`;
-          return { ...entry, rank: rankStr };
-        });
-
-        setBoard(rankedFallback);
-      } finally {
-        setLoading(false);
       }
-    }
 
-    loadLeaderboard();
+      // 8-second query timeout
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Database connection timeout")), 8000)
+      );
+
+      const executeQuery = async () => {
+        const result = await query.order("score", { ascending: false }).limit(10);
+        const { data, error } = result;
+        if (error) {
+          throw error;
+        }
+        return data;
+      };
+
+      const data = await Promise.race([executeQuery(), timeoutPromise]);
+
+      if (!data) {
+        throw new Error("No data returned from database");
+      }
+
+      const finalEntries: LeaderboardEntry[] = (data as Array<{ id: string; nickname: string; score: number; streak: number; category: string }>).map((item) => ({
+        id: String(item.id),
+        nickname: String(item.nickname || ""),
+        score: Number(item.score || 0),
+        streak: Number(item.streak || 0),
+        category: String(item.category || ""),
+        highlight: submittedId ? item.id === submittedId : false,
+      }));
+
+      const hasHighlighted = finalEntries.some((e) => e.highlight);
+      if (!hasHighlighted && sessionResult && sessionResult.submitted) {
+        if (matchCategory) {
+          const userEntry: LeaderboardEntry = {
+            id: submittedId || "user_run",
+            nickname: sessionNickname,
+            score: sessionScore,
+            streak: sessionStreak,
+            category: sessionCategory,
+            highlight: true,
+          };
+          finalEntries.push(userEntry);
+        }
+      }
+
+      finalEntries.sort((a, b) => b.score - a.score);
+
+      const rankedBoard = finalEntries.map((entry, idx) => {
+        const rankNum = idx + 1;
+        const rankStr = rankNum < 10 ? `0${rankNum}` : `${rankNum}`;
+        return { ...entry, rank: rankStr };
+      });
+
+      setBoard(rankedBoard);
+    } catch (err: unknown) {
+      console.error("Load leaderboard failed:", err);
+      const errMsg = err instanceof Error ? err.message : "Leaderboard unavailable";
+      setError(errMsg);
+      setBoard([]);
+    } finally {
+      setLoading(false);
+    }
   }, [activeCategory]);
+
+  useEffect(() => {
+    loadLeaderboard();
+  }, [loadLeaderboard]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none animate-page-fade">
@@ -302,13 +273,6 @@ function LeaderboardContent() {
         ))}
       </div>
 
-      {/* Network Offline Alert Badge */}
-      {isOffline && (
-        <div className="w-full py-3 px-4 rounded mb-6 border border-neonViolet/30 bg-neonViolet/5 text-neonViolet font-display text-[11px] text-center tracking-wider">
-          ⚡ MAINFRAME OFFLINE: USING LOCAL SIMULATOR DATABASE ⚡
-        </div>
-      )}
-
       {/* Styled Esports Main Scoreboard */}
       <div className="w-full rounded-lg bg-bgDark border-2 border-neonViolet/30 overflow-hidden shadow-[0_0_20px_rgba(168,85,247,0.1)] mb-10 font-display">
         {/* Table Header */}
@@ -325,10 +289,25 @@ function LeaderboardContent() {
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <SystemLogLoader context="leaderboard" />
             </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-4">
+              <span className="text-sm font-mono tracking-widest text-[#ef4444] uppercase font-bold animate-pulse">
+                ⚠️ ERROR: LEADERBOARD UNAVAILABLE
+              </span>
+              <p className="text-xs text-textMuted max-w-md font-mono normal-case">
+                Failed to establish database connection. The mainframe records could not be retrieved.
+              </p>
+              <button
+                onClick={() => loadLeaderboard()}
+                className="px-4 py-2 border border-neonCyan/30 hover:border-neonCyan bg-neonCyan/10 text-neonCyan rounded text-xs font-display tracking-widest uppercase transition-all duration-300 hover:shadow-[0_0_12px_rgba(34,211,238,0.3)] cursor-pointer"
+              >
+                RETRY CONNECTION
+              </button>
+            </div>
           ) : board.length === 0 ? (
-            <div className="text-center py-20">
-              <span className="text-xs tracking-widest text-textMuted uppercase font-semibold">
-                NO ENTRIES RECOVERED IN THIS SECTOR
+            <div className="text-center py-20 px-4">
+              <span className="text-xs tracking-widest text-textMuted uppercase font-semibold font-mono">
+                No entries yet — be the first!
               </span>
             </div>
           ) : (

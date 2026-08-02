@@ -25,6 +25,14 @@ interface DummyChainable {
   order: () => DummyChainable;
   limit: () => DummyChainable;
   eq: () => DummyChainable;
+  or: () => DummyChainable;
+  like: () => DummyChainable;
+  neq: () => DummyChainable;
+  gt: () => DummyChainable;
+  lt: () => DummyChainable;
+  gte: () => DummyChainable;
+  lte: () => DummyChainable;
+  in: () => DummyChainable;
   single: () => DummyChainable;
   then: (resolve: (value: { data: Record<string, unknown>[]; error: Error }) => void) => Promise<{ data: Record<string, unknown>[]; error: Error }>;
 }
@@ -44,6 +52,14 @@ export const supabase = supabaseInstance || (new Proxy({} as Record<string, unkn
           order: () => chainable,
           limit: () => chainable,
           eq: () => chainable,
+          or: () => chainable,
+          like: () => chainable,
+          neq: () => chainable,
+          gt: () => chainable,
+          lt: () => chainable,
+          gte: () => chainable,
+          lte: () => chainable,
+          in: () => chainable,
           single: () => chainable,
           then: (resolve) => {
             if (resolve) {

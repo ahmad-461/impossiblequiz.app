@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import SystemLogLoader from "../../../../components/SystemLogLoader";
 
 interface Subcategory {
   id: string;
@@ -160,7 +161,7 @@ function EnglishSubcategoriesContent() {
       {/* Back to Categories Link */}
       <Link
         href={`/categories?aiTwin=${aiTwin}`}
-        className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
+        className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-300 ease-in-out uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
       >
         ← RETREAT (CATEGORIES)
       </Link>
@@ -170,7 +171,7 @@ function EnglishSubcategoriesContent() {
 
 export default function EnglishSubcategoriesPage() {
   return (
-    <Suspense fallback={<div className="text-center py-20 font-display text-textMuted">LOADING MAINBOARD...</div>}>
+    <Suspense fallback={<SystemLogLoader context="subcategories" />}>
       <EnglishSubcategoriesContent />
     </Suspense>
   );

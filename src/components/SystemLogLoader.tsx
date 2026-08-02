@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 interface SystemLogLoaderProps {
-  context: "quiz" | "leaderboard" | "results";
+  context: "quiz" | "leaderboard" | "results" | "languages" | "subcategories" | "difficulty";
 }
 
 const LOG_MESSAGES = {
@@ -21,6 +21,21 @@ const LOG_MESSAGES = {
     "> DECRYPTING SURVIVOR CLEARANCE METRICS...",
     "> COMPUTING PRECISION ACCURACY DATA...",
     "> FINALIZING CLEARANCE REPORT...",
+  ],
+  languages: [
+    "> COMPILING COMPILER REPOSITORY...",
+    "> RUNNING SYNTAX ANALYSIS...",
+    "> ESTABLISHING NATIVE BINDINGS...",
+  ],
+  subcategories: [
+    "> LOADING DOMAIN TOPIC NODES...",
+    "> SCANNING KNOWLEDGE GRAPH...",
+    "> INITIALIZING SECTOR VECTORS...",
+  ],
+  difficulty: [
+    "> CALCULATING RISK EXPOSURE PROFILE...",
+    "> PINPOINTING AUTHORIZATION LEVEL...",
+    "> STABILIZING TRANSIT PORTAL...",
   ],
 };
 

@@ -121,7 +121,7 @@ export default function CategoriesPage() {
       {/* Back to Home Link */}
       <Link
         href="/"
-        className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-200 uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
+        className="text-xs font-display tracking-widest text-textMuted hover:text-neonViolet transition-colors duration-300 ease-in-out uppercase border-b border-textMuted/20 hover:border-neonViolet/50 pb-0.5 focus:outline-none focus:ring-1 focus:ring-neonViolet"
       >
         ← ABANDON MISSION (HOME)
       </Link>

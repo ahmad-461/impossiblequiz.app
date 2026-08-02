@@ -60,8 +60,8 @@ export const categories: Category[] = [
     desc: "Asymptotic complexity, graph theory, and mathematical proofs.",
     tag: "ALG.COMP",
     isExpandable: false,
-    actionLabel: "ENTER SYSTEM →",
-    href: "/quiz?category=logic-algorithms",
+    actionLabel: "→ SELECT DIFFICULTY",
+    href: "/categories/logic-algorithms/difficulty",
     icon: (
       <svg className="w-10 h-10 text-neonCyan group-hover:text-neonViolet transition-colors duration-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <circle cx="12" cy="5" r="2.5" />
@@ -78,8 +78,8 @@ export const categories: Category[] = [
     desc: "Statistics, database query planning, and data pipeline scale.",
     tag: "DAT.SCALE",
     isExpandable: false,
-    actionLabel: "ENTER SYSTEM →",
-    href: "/quiz?category=data-analytics",
+    actionLabel: "→ SELECT DIFFICULTY",
+    href: "/categories/data-analytics/difficulty",
     icon: (
       <svg className="w-10 h-10 text-neonCyan group-hover:text-neonViolet transition-colors duration-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
@@ -92,8 +92,8 @@ export const categories: Category[] = [
     desc: "CPU architectures, memory virtualization, and networking protocols.",
     tag: "SYS.CORE",
     isExpandable: false,
-    actionLabel: "ENTER SYSTEM →",
-    href: "/quiz?category=computer-science-fundamentals",
+    actionLabel: "→ SELECT DIFFICULTY",
+    href: "/categories/computer-science-fundamentals/difficulty",
     icon: (
       <svg className="w-10 h-10 text-neonCyan group-hover:text-neonViolet transition-colors duration-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <rect x="5" y="5" width="14" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />

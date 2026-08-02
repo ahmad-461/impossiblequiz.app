@@ -38,9 +38,13 @@ function getFallbackQuestion(
     } else if (parts.length === 2) {
       targetCategory = `${prefix}_${parts[1]}`;
     }
+  } else if (category.startsWith("logic-algorithms_") || category.startsWith("data-analytics_") || category.startsWith("computer-science-fundamentals_")) {
+    const parts = category.split("_");
+    targetCategory = parts[0];
+    targetDifficulty = parts[1] || difficulty;
   }
 
-  // If isBossRound is requested, try to find a boss round question first
+  // 1. Exact Category, Exact Difficulty, Not Asked
   let candidates = staticQuestions.filter((q) => {
     const matchCategory = q.category === targetCategory;
     const matchBoss = isBossRound ? q.isBossRound : true;
@@ -50,8 +54,18 @@ function getFallbackQuestion(
     return matchCategory && matchBoss && matchDiff && notAskedId && notAskedText;
   });
 
+  // 2. Exact Category, Any Difficulty, Not Asked
   if (candidates.length === 0) {
-    // Relax already-asked text/id filters
+    candidates = staticQuestions.filter((q) => {
+      const matchCategory = q.category === targetCategory;
+      const notAskedId = !alreadyAskedIds.includes(q.id);
+      const notAskedText = !alreadyAskedTexts.includes(q.questionText);
+      return matchCategory && notAskedId && notAskedText;
+    });
+  }
+
+  // 3. Exact Category, Exact Difficulty (Relax already asked)
+  if (candidates.length === 0) {
     candidates = staticQuestions.filter((q) => {
       const matchCategory = q.category === targetCategory;
       const matchBoss = isBossRound ? q.isBossRound : true;
@@ -60,18 +74,45 @@ function getFallbackQuestion(
     });
   }
 
+  // 4. Exact Category, Any Difficulty (Relax difficulty and asked)
   if (candidates.length === 0) {
-    // Relax difficulty / boss round completely
     candidates = staticQuestions.filter((q) => q.category === targetCategory);
   }
 
+  // 5. Parent / Sector Category, Not Asked
   if (candidates.length === 0) {
-    // Fallback to general programming category if language specific is empty
-    candidates = staticQuestions.filter((q) => q.category === "programming");
+    let parentCategory = "programming";
+    if (targetCategory.startsWith("business_")) parentCategory = "business";
+    if (targetCategory.startsWith("english_")) parentCategory = "english";
+
+    candidates = staticQuestions.filter((q) => {
+      const isParent = q.category === parentCategory || q.category.startsWith(parentCategory + "_");
+      const notAskedId = !alreadyAskedIds.includes(q.id);
+      const notAskedText = !alreadyAskedTexts.includes(q.questionText);
+      return isParent && notAskedId && notAskedText;
+    });
   }
 
+  // 6. Parent / Sector Category (Relax asked)
   if (candidates.length === 0) {
-    // Absolute fallback
+    let parentCategory = "programming";
+    if (targetCategory.startsWith("business_")) parentCategory = "business";
+    if (targetCategory.startsWith("english_")) parentCategory = "english";
+
+    candidates = staticQuestions.filter((q) => {
+      return q.category === parentCategory || q.category.startsWith(parentCategory + "_");
+    });
+  }
+
+  // 7. Absolute Fallback, Not Asked
+  if (candidates.length === 0) {
+    candidates = staticQuestions.filter((q) => {
+      return !alreadyAskedIds.includes(q.id) && !alreadyAskedTexts.includes(q.questionText);
+    });
+  }
+
+  // 8. Absolute Fallback (Total relaxation)
+  if (candidates.length === 0) {
     candidates = staticQuestions;
   }
 
@@ -284,6 +325,10 @@ export async function POST(request: Request) {
         subcategory = parts[1];
         targetCategory = `english_${subcategory}`;
       }
+    } else if (category.startsWith("logic-algorithms_") || category.startsWith("data-analytics_") || category.startsWith("computer-science-fundamentals_")) {
+      const parts = category.split("_");
+      targetCategory = parts[0];
+      targetDifficulty = parts[1] || difficulty;
     }
 
     // Fetch from Gemini and Validate
@@ -314,6 +359,9 @@ export async function POST(request: Request) {
         source: "gemini",
       });
     } else {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[DEV MODE] Relying on static question pool fallback instead of a live Gemini API response.");
+      }
       // Fallback seamlessly to Static Question
       const fallbackQuestion = getFallbackQuestion(
         category,

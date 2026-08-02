@@ -84,7 +84,7 @@ export default function Header() {
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 32 32"
-              className="w-8 h-8 filter drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] group-hover:scale-105 transition-transform duration-200 flex-shrink-0"
+              className="w-8 h-8 filter drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] group-hover:scale-105 transition-transform duration-300 ease-in-out flex-shrink-0"
               fill="none"
             >
               <rect width="32" height="32" rx="6" fill="#0a0b10" />
@@ -114,7 +114,7 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`font-mono text-sm tracking-widest font-bold transition-all duration-200 relative py-1 focus:outline-none terminal-cmd group ${
+                  className={`font-mono text-sm tracking-widest font-bold transition-all duration-300 ease-in-out relative py-1 focus:outline-none terminal-cmd group ${
                     isActive
                       ? "text-neonCyan drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]"
                       : "text-textMuted hover:text-textPrimary hover:drop-shadow-[0_0_6px_rgba(245,245,245,0.2)]"
@@ -138,7 +138,7 @@ export default function Header() {
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             type="button"
-            className="flex md:hidden items-center justify-center w-10 h-10 border border-neonCyan/30 hover:border-neonCyan rounded bg-bgDark/60 text-neonCyan font-mono text-lg font-bold shadow-[0_0_8px_rgba(34,211,238,0.2)] focus:outline-none transition-all duration-200"
+            className="flex md:hidden items-center justify-center w-10 h-10 border border-neonCyan/30 hover:border-neonCyan rounded bg-bgDark/60 text-neonCyan font-mono text-lg font-bold shadow-[0_0_8px_rgba(34,211,238,0.2)] focus:outline-none transition-all duration-300 ease-in-out"
             aria-label="Toggle Navigation Menu"
             aria-expanded={menuOpen}
           >
@@ -167,7 +167,7 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm tracking-wide py-2 border-b border-neonViolet/10 transition-all duration-200 terminal-cmd focus:outline-none ${
+                  className={`text-sm tracking-wide py-2 border-b border-neonViolet/10 transition-all duration-300 ease-in-out terminal-cmd focus:outline-none ${
                     isActive
                       ? "text-neonCyan drop-shadow-[0_0_6px_rgba(34,211,238,0.4)]"
                       : "text-textMuted hover:text-textPrimary"

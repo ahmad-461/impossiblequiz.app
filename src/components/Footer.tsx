@@ -81,19 +81,19 @@ export default function Footer() {
         {/* Row 2: Route Links formatted as System Outputs */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-textMuted font-mono text-xs md:text-sm py-1">
           <span className="text-neonViolet font-bold">{"> ROUTES:"}</span>
-          <Link href="/" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-200">
+          <Link href="/" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-300 ease-in-out">
             cd /home
           </Link>
           <span className="text-neonViolet/40 select-none">{"//"}</span>
-          <Link href="/categories" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-200">
+          <Link href="/categories" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-300 ease-in-out">
             cd /categories
           </Link>
           <span className="text-neonViolet/40 select-none">{"//"}</span>
-          <Link href="/leaderboard" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-200">
+          <Link href="/leaderboard" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-300 ease-in-out">
             cd /leaderboard
           </Link>
           <span className="text-neonViolet/40 select-none">{"//"}</span>
-          <Link href="/escape-room" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-200">
+          <Link href="/escape-room" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-300 ease-in-out">
             ./escape-room
           </Link>
         </div>
@@ -110,7 +110,7 @@ export default function Footer() {
               href="https://ahmad-khan-build-ship-iterate-xi.vercel.app/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-neonCyan font-bold hover:text-neonViolet hover:drop-shadow-[0_0_6px_rgba(168,85,247,0.4)] transition-all duration-200"
+              className="text-neonCyan font-bold hover:text-neonViolet hover:drop-shadow-[0_0_6px_rgba(168,85,247,0.4)] transition-all duration-300 ease-in-out"
             >
               Muhammad Ahmad Khan
             </a>

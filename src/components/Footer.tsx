@@ -7,9 +7,25 @@ export default function Footer() {
   const [uptimeSeconds, setUptimeSeconds] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setUptimeSeconds((prev) => prev + 1);
-    }, 1000);
+    if (typeof window === "undefined") return;
+
+    let startTime = sessionStorage.getItem("session_start_time");
+    if (!startTime) {
+      startTime = Date.now().toString();
+      sessionStorage.setItem("session_start_time", startTime);
+    }
+
+    const startTimeNum = Number(startTime);
+
+    const updateUptime = () => {
+      const now = Date.now();
+      const diff = Math.max(0, Math.floor((now - startTimeNum) / 1000));
+      setUptimeSeconds(diff);
+    };
+
+    updateUptime();
+
+    const interval = setInterval(updateUptime, 1000);
     return () => clearInterval(interval);
   }, []);
 

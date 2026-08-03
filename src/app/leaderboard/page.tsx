@@ -137,80 +137,9 @@ function LeaderboardContent() {
     }
   }, []);
 
-  // Dynamically load and initialize Eruda console for mobile debugging
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    interface ErudaInstance {
-      init: () => void;
-      destroy: () => void;
-    }
-
-    let isDestroyed = false;
-    let erudaScript: HTMLScriptElement | null = null;
-    const w = window as unknown as { eruda?: ErudaInstance };
-
-    const initEruda = () => {
-      if (w.eruda) {
-        try {
-          w.eruda.init();
-          console.log("[SUPABASE DIAGNOSTIC]: Eruda mobile console initialized successfully.");
-        } catch (err) {
-          console.error("[SUPABASE DIAGNOSTIC]: Failed to init Eruda:", err);
-        }
-      }
-    };
-
-    if (w.eruda) {
-      initEruda();
-    } else {
-      erudaScript = document.createElement("script");
-      erudaScript.src = "https://cdn.jsdelivr.net/npm/eruda";
-      erudaScript.async = true;
-      erudaScript.onload = () => {
-        if (!isDestroyed) {
-          initEruda();
-        }
-      };
-      document.body.appendChild(erudaScript);
-    }
-
-    return () => {
-      isDestroyed = true;
-      // Clean up Eruda script
-      if (erudaScript && document.body.contains(erudaScript)) {
-        try {
-          document.body.removeChild(erudaScript);
-        } catch {
-          // Ignore
-        }
-      }
-      // Clean up Eruda UI
-      if (w.eruda) {
-        try {
-          w.eruda.destroy();
-        } catch {
-          // Ignore
-        }
-      }
-    };
-  }, []);
-
   const loadLeaderboard = useCallback(async () => {
     setLoading(true);
     setError(null);
-
-    // Environment Verification Logs
-    console.log("[SUPABASE DIAGNOSTIC]: --- Environment Check ---");
-    console.log("[SUPABASE DIAGNOSTIC]: NEXT_PUBLIC_SUPABASE_URL present:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log("[SUPABASE DIAGNOSTIC]: NEXT_PUBLIC_SUPABASE_ANON_KEY present:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      console.log("[SUPABASE DIAGNOSTIC]: NEXT_PUBLIC_SUPABASE_URL startsWith('http'):", process.env.NEXT_PUBLIC_SUPABASE_URL.startsWith('http'));
-      console.log("[SUPABASE DIAGNOSTIC]: NEXT_PUBLIC_SUPABASE_URL value length:", process.env.NEXT_PUBLIC_SUPABASE_URL.length);
-    }
-    if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.log("[SUPABASE DIAGNOSTIC]: NEXT_PUBLIC_SUPABASE_ANON_KEY value length:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length);
-    }
 
     const sessionResult = getUserSessionResult();
     const submittedId = sessionResult?.submittedId;
@@ -295,30 +224,6 @@ function LeaderboardContent() {
       setBoard(rankedBoard);
     } catch (err: unknown) {
       console.error("Load leaderboard failed:", err);
-
-      // Detailed error serialization to ensure invisible fields (like error message on Error objects) are captured
-      let errorDetails: Record<string, unknown> = {};
-      if (err instanceof Error) {
-        errorDetails = {
-          name: err.name,
-          message: err.message,
-          stack: err.stack,
-        };
-        // Safely extract any other properties (such as code, details, hint from Supabase)
-        try {
-          Object.getOwnPropertyNames(err).forEach((key) => {
-            errorDetails[key] = (err as unknown as Record<string, unknown>)[key];
-          });
-        } catch {
-          // Ignore
-        }
-      } else if (typeof err === "object" && err !== null) {
-        errorDetails = { ...err };
-      } else {
-        errorDetails = { rawError: String(err) };
-      }
-
-      console.error("[SUPABASE DIAGNOSTIC]:", JSON.stringify(errorDetails, null, 2));
 
       const errMsg = err instanceof Error ? err.message : "Leaderboard unavailable";
       setError(errMsg);

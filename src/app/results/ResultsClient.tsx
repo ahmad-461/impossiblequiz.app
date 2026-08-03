@@ -612,6 +612,12 @@ Link: ${shareUrl}`;
                 {isSubmitting ? "TRANSMITTING..." : "SUBMIT SCORE"}
               </button>
             </div>
+
+            {/* Contextual EEAT Privacy Note */}
+            <p className="text-[10px] font-mono text-textMuted/60 leading-normal border-t border-neonViolet/10 pt-3">
+              🔒 <span className="text-neonCyan font-bold">PRIVACY NOTICE:</span> Nickname submissions are public and strictly anonymous. No emails, IP logs, tracking cookies, or personally identifiable data are harvested. For further telemetry policies, read our <Link href="/about" className="text-neonCyan underline hover:text-neonViolet transition-colors duration-200">About/Privacy disclosure</Link>.
+            </p>
+
             {submitError && (
               <p className="text-xs text-neonViolet font-display mt-1 text-center sm:text-left">{submitError}</p>
             )}

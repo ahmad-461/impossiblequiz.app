@@ -96,6 +96,10 @@ export default function Footer() {
           <Link href="/escape-room" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-300 ease-in-out">
             ./escape-room
           </Link>
+          <span className="text-neonViolet/40 select-none">{"//"}</span>
+          <Link href="/about" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-300 ease-in-out font-bold text-neonCyan">
+            cat about.md
+          </Link>
         </div>
 
         {/* Separator Divider Line */}
@@ -106,14 +110,12 @@ export default function Footer() {
           {/* Operator attribution */}
           <div className="flex items-center gap-1.5 text-textMuted text-center sm:text-left">
             <span className="text-neonViolet/60">{"> OPERATOR:"}</span>
-            <a
-              href="https://ahmad-khan-build-ship-iterate-xi.vercel.app/"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/about"
               className="text-neonCyan font-bold hover:text-neonViolet hover:drop-shadow-[0_0_6px_rgba(168,85,247,0.4)] transition-all duration-300 ease-in-out"
             >
               Muhammad Ahmad Khan
-            </a>
+            </Link>
           </div>
 
           {/* System status log and copyright */}

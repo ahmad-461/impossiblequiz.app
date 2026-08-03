@@ -33,8 +33,34 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // JSON-LD SoftwareApplication Schema Markup
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "The Impossible Quiz Generator",
+    "operatingSystem": "All",
+    "applicationCategory": "EducationalApplication, GameApplication",
+    "description": "Test your limits against the ultimate AI-generated impossible quiz. Dynamic difficulty progression, boss rounds, and custom topics powered by Gemini and our python engine.",
+    "author": {
+      "@type": "Person",
+      "name": "Muhammad Ahmad Khan",
+      "url": "https://ahmad-khan-build-ship-iterate-xi.vercel.app/"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  };
+
   return (
     <html lang="en" className={`${inter.variable} ${orbitron.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="font-sans bg-bgDark text-textPrimary min-h-screen flex flex-col">
         {/* Persistent Sticky Navigation Header */}
         <Header />

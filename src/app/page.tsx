@@ -80,6 +80,7 @@ function DodgingButton({ onCatch }: { onCatch: () => void }) {
       setPosition({ x: rx, y: ry });
       setMobileTapped(true);
     } else {
+      e.preventDefault(); // Prevents click simulation
       onCatch();
       setPosition({ x: 0, y: 0 });
       setMobileTapped(false);
@@ -308,6 +309,14 @@ export default function Home() {
               >
                 ???
               </button>
+            </ScrollReveal>
+
+            {/* Stakes/Social Proof Line */}
+            <ScrollReveal className="mt-6 flex items-start sm:items-center gap-2 max-w-xl">
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse mt-1 sm:mt-0 shrink-0" style={{ backgroundColor: "#ef4444" }}></span>
+              <span className="text-[11px] font-mono tracking-wider uppercase leading-snug" style={{ color: "#ef4444" }}>
+                // STAKES: MOST CANDIDATES FAIL TO SURVIVE PAST HARD DIFFICULTY. THE BOSS ROUND HAS A REPUTATION.
+              </span>
             </ScrollReveal>
 
             {/* Futuristic status items */}

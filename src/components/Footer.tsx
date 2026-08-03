@@ -7,9 +7,27 @@ export default function Footer() {
   const [uptimeSeconds, setUptimeSeconds] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setUptimeSeconds((prev) => prev + 1);
-    }, 1000);
+    let startTime = Date.now();
+    try {
+      const saved = sessionStorage.getItem("session_start_time");
+      if (saved) {
+        startTime = parseInt(saved, 10);
+      } else {
+        sessionStorage.setItem("session_start_time", String(startTime));
+      }
+    } catch (e) {
+      // Fallback if sessionStorage is disabled or throws an error
+    }
+
+    const updateUptime = () => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setUptimeSeconds(Math.max(0, elapsed));
+    };
+
+    // Set immediately on mount to prevent lag or frozen display
+    updateUptime();
+
+    const interval = setInterval(updateUptime, 1000);
     return () => clearInterval(interval);
   }, []);
 

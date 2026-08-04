@@ -2,9 +2,25 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { getCumulativeXP } from "../lib/achievements";
 
 export default function Footer() {
   const [uptimeSeconds, setUptimeSeconds] = useState(0);
+  const [cumulativeXP, setCumulativeXP] = useState(0);
+
+  // Read cumulative XP on mount and react to updates
+  useEffect(() => {
+    setCumulativeXP(getCumulativeXP());
+
+    const handleXpUpdate = () => {
+      setCumulativeXP(getCumulativeXP());
+    };
+
+    window.addEventListener("xp-updated", handleXpUpdate);
+    return () => {
+      window.removeEventListener("xp-updated", handleXpUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -67,7 +83,7 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto relative z-10 flex flex-col gap-6">
         {/* Row 1: System Status Dashboard Readout */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border border-neonViolet/20 bg-bgDark/40 p-4 rounded font-mono text-xs md:text-sm tracking-widest text-textMuted">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-center border border-neonViolet/20 bg-bgDark/40 p-4 rounded font-mono text-xs md:text-sm tracking-widest text-textMuted">
           {/* Status Indicator */}
           <div className="flex items-center gap-2 justify-center md:justify-start">
             <span className="text-neonViolet/60">STATUS:</span>
@@ -82,6 +98,14 @@ export default function Footer() {
             <span className="text-neonViolet/60">SESSION UPTIME:</span>
             <span className="text-textPrimary font-bold tabular-nums">
               {formatUptime(uptimeSeconds)}
+            </span>
+          </div>
+
+          {/* Cumulative XP Counter Display */}
+          <div className="flex items-center gap-2 justify-center">
+            <span className="text-neonViolet/60">XP TOTAL:</span>
+            <span className="text-neonCyan font-black animate-pulse">
+              {cumulativeXP.toLocaleString()} XP
             </span>
           </div>
 
@@ -111,6 +135,10 @@ export default function Footer() {
           <span className="text-neonViolet/40 select-none">{"//"}</span>
           <Link href="/escape-room" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-300 ease-in-out">
             ./escape-room
+          </Link>
+          <span className="text-neonViolet/40 select-none">{"//"}</span>
+          <Link href="/achievements" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-300 ease-in-out">
+            cd /achievements
           </Link>
           <span className="text-neonViolet/40 select-none">{"//"}</span>
           <Link href="/about" className="hover:text-neonCyan hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.4)] transition-all duration-300 ease-in-out font-bold text-neonCyan">

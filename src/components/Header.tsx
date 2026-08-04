@@ -35,6 +35,7 @@ export default function Header() {
     { href: "/categories", label: "cd /categories" },
     { href: "/leaderboard", label: "cd /leaderboard" },
     { href: "/escape-room", label: "./escape-room" },
+    { href: "/achievements", label: "cd /achievements" },
   ];
 
   return (
@@ -106,7 +107,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-8">
             {navLinks.map((link) => {
               const isActive = link.href === "/"
                 ? pathname === "/"
@@ -135,6 +136,28 @@ export default function Header() {
             })}
           </nav>
 
+          {/* Fallback for smaller than large layout but greater than mobile */}
+          <nav className="hidden md:flex lg:hidden items-center gap-5">
+            {navLinks.map((link) => {
+              const isActive = link.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`font-mono text-xs tracking-widest font-bold transition-all duration-300 ease-in-out relative py-1 focus:outline-none terminal-cmd group ${
+                    isActive
+                      ? "text-neonCyan drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]"
+                      : "text-textMuted hover:text-textPrimary"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+
           {/* Mobile Terminal-style $ Prompt Button */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -152,7 +175,7 @@ export default function Header() {
         <div
           className={`md:hidden absolute top-full left-4 right-4 mt-2 border border-neonCyan/40 bg-bgDark/95 backdrop-blur-lg rounded overflow-hidden transition-all duration-300 ease-in-out font-mono ${
             menuOpen
-              ? "max-h-72 opacity-100 py-4 shadow-[0_10px_30px_rgba(34,211,238,0.15)]"
+              ? "max-h-96 opacity-100 py-4 shadow-[0_10px_30px_rgba(34,211,238,0.15)]"
               : "max-h-0 opacity-0 pointer-events-none border-transparent"
           }`}
         >

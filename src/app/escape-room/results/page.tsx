@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  unlockAchievement,
+  addXP,
+  Achievement,
+  ACHIEVEMENTS,
+} from "../../../lib/achievements";
 
 interface EscapeRoomResult {
   outcome: "escaped" | "trapped";
@@ -11,17 +17,71 @@ interface EscapeRoomResult {
   timeRemaining: number;
   timeUsed: number;
   roomsStatus: ("cleared" | "failed" | "pending")[];
+  evaluated?: boolean;
 }
 
 export default function EscapeRoomResultsPage() {
   const router = useRouter();
   const [result, setResult] = useState<EscapeRoomResult | null>(null);
 
+  // Active toast triggers for newly unlocked achievements
+  const [toastQueue, setToastQueue] = useState<Achievement[]>([]);
+  const [currentToast, setCurrentToast] = useState<Achievement | null>(null);
+
+  // Handle sequential toast queue
+  useEffect(() => {
+    if (toastQueue.length > 0 && !currentToast) {
+      const next = toastQueue[0];
+      setCurrentToast(next);
+      setToastQueue((prev) => prev.slice(1));
+    }
+  }, [toastQueue, currentToast]);
+
+  useEffect(() => {
+    if (currentToast) {
+      const timer = setTimeout(() => {
+        setCurrentToast(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentToast]);
+
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem("escape_room_result");
       if (stored) {
-        setResult(JSON.parse(stored));
+        const parsed: EscapeRoomResult = JSON.parse(stored);
+        setResult(parsed);
+
+        // Evaluate achievements & XP only once per attempt
+        if (!parsed.evaluated) {
+          const isEscaped = parsed.outcome === "escaped";
+
+          // Calculate Escape Room XP:
+          // Escaped: 100 XP base, Trapped: 5 XP per cleared room
+          const calculatedXp = isEscaped ? 100 : parsed.roomsClearedCount * 5;
+
+          addXP(calculatedXp);
+
+          const newlyUnlocked: Achievement[] = [];
+
+          // 1. Escape Artist Achievement
+          if (isEscaped) {
+            if (unlockAchievement("escape_artist")) {
+              const match = ACHIEVEMENTS.find((a) => a.id === "escape_artist");
+              if (match) newlyUnlocked.push(match);
+            }
+          }
+
+          if (newlyUnlocked.length > 0) {
+            setToastQueue((prev) => [...prev, ...newlyUnlocked]);
+          }
+
+          // Save evaluation flag
+          const updated = { ...parsed, evaluated: true };
+          sessionStorage.setItem("escape_room_result", JSON.stringify(updated));
+          setResult(updated);
+        }
       } else {
         // Fallback or redirect if no session exists
         router.replace("/escape-room");
@@ -69,6 +129,30 @@ export default function EscapeRoomResultsPage() {
       `}} />
 
       <div className="absolute inset-0 atmospheric-escape-results pointer-events-none -z-10"></div>
+
+      {/* Newly Unlocked Achievement Notification (Non-blocking sequential toast) */}
+      {currentToast && (
+        <div className="fixed bottom-6 right-6 z-50 border-2 border-neonCyan bg-bgDark shadow-[0_0_15px_rgba(34,211,238,0.25)] px-6 py-4 rounded flex items-center gap-3 animate-page-fade font-display">
+          <div className="text-2xl">{currentToast.icon}</div>
+          <div>
+            <div className="text-xs font-black text-neonCyan uppercase tracking-widest">
+              ACHIEVEMENT UNLOCKED!
+            </div>
+            <div className="text-[11px] text-textPrimary font-bold mt-0.5">
+              {currentToast.title}
+            </div>
+            <div className="text-[9px] text-textMuted mt-0.5">
+              {currentToast.description}
+            </div>
+          </div>
+          <button
+            onClick={() => setCurrentToast(null)}
+            className="text-[10px] text-textMuted hover:text-neonCyan ml-4 focus:outline-none cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Outcome Badge */}
       <div

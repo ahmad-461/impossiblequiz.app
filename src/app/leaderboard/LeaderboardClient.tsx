@@ -15,6 +15,13 @@ interface LeaderboardEntry {
   highlight?: boolean;
 }
 
+interface RecentSubmission {
+  nickname: string;
+  category: string;
+  score: number;
+  streak: number;
+}
+
 const SECTORS = [
   { id: "all", label: "ALL SECTORS", tag: "ALL" },
   { id: "programming", label: "PROGRAMMING", tag: "SYS.LANG" },
@@ -25,6 +32,26 @@ const SECTORS = [
   { id: "computer-science-fundamentals", label: "CS FUNDAMENTALS", tag: "SYS.CORE" },
 ];
 
+const formatFeedCategory = (id: string): string => {
+  if (id.startsWith("programming_")) {
+    const parts = id.split("_");
+    return `Programming: ${parts[1]?.toUpperCase() || "CORE"} (${parts[2]?.toUpperCase() || "EASY"})`;
+  }
+  if (id.startsWith("business_")) {
+    const parts = id.split("_");
+    return `Business: ${parts[1]?.toUpperCase() || "STRATEGY"} (${parts[2]?.toUpperCase() || "EASY"})`;
+  }
+  if (id.startsWith("english_")) {
+    const parts = id.split("_");
+    return `English: ${parts[1]?.toUpperCase() || "VOCAB"} (${parts[2]?.toUpperCase() || "EASY"})`;
+  }
+  const mapping: Record<string, string> = {
+    "logic-algorithms": "Logic/Algo",
+    "data-analytics": "Data Analytics",
+    "computer-science-fundamentals": "CS Fundamentals"
+  };
+  return mapping[id] || id.replace("-", " ").toUpperCase();
+};
 
 const getCategoryLabel = (cat: string): string => {
   if (cat.startsWith("programming_")) {
@@ -108,6 +135,7 @@ function LeaderboardContent() {
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [recentFeeds, setRecentFeeds] = useState<RecentSubmission[]>([]);
 
   // Retrieve user results state from sessionStorage
   const getUserSessionResult = () => {
@@ -135,6 +163,24 @@ function LeaderboardContent() {
         setActiveCategory(sessionResult.category);
       }
     }
+
+    // Fetch live feed data
+    async function fetchRecentSubmissions() {
+      try {
+        const { data, error } = await supabase
+          .from("leaderboard")
+          .select("nickname, category, score, streak")
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        if (!error && data) {
+          setRecentFeeds(data as RecentSubmission[]);
+        }
+      } catch (e) {
+        console.warn("Failed to fetch recent submissions for activity feed:", e);
+      }
+    }
+    fetchRecentSubmissions();
   }, []);
 
   const loadLeaderboard = useCallback(async () => {
@@ -256,6 +302,33 @@ function LeaderboardContent() {
         Only the fastest minds make the cut. High performance is permanently etched into our virtual mainframe.
       </p>
 
+      {/* Live Recent Activity Feed / Ticker */}
+      {recentFeeds && recentFeeds.length > 0 && (
+        <div className="w-full p-4 rounded bg-bgDark/80 border border-neonCyan/30 font-mono text-[11px] text-textMuted tracking-wider shadow-[0_0_12px_rgba(34,211,238,0.05)] mb-8 max-w-4xl">
+          <div className="flex items-center gap-2 text-neonCyan font-bold uppercase mb-2">
+            <span className="w-2 h-2 rounded-full bg-neonCyan animate-ping"></span>
+            <span>SYSTEM DIAGNOSTIC: RECENT INFILTRATIONS (LIVE FEED)</span>
+          </div>
+          <div className="space-y-1.5 divide-y divide-neonViolet/10">
+            {recentFeeds.map((feed, idx) => (
+              <div key={idx} className="pt-1.5 flex flex-col sm:flex-row justify-between gap-2 text-[10px] md:text-xs">
+                <div>
+                  <span className="text-neonCyan font-bold">&gt; USER &quot;{feed.nickname}&quot;</span>
+                  <span className="text-textPrimary"> bypassed sector </span>
+                  <span className="text-neonViolet font-bold">{formatFeedCategory(feed.category)}</span>
+                </div>
+                <div className="text-right shrink-0">
+                  <span>SCORE: </span>
+                  <span className="text-neonCyan font-bold">{feed.score.toLocaleString()} PTS</span>
+                  <span className="text-textPrimary"> {" // "} STREAK: </span>
+                  <span className="text-neonViolet font-bold">{feed.streak} 🔥</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Categories Filter Tabs */}
       <div className="flex flex-wrap gap-2 justify-center mb-8 w-full">
         {SECTORS.map((sector) => (
@@ -360,42 +433,59 @@ function LeaderboardContent() {
               </span>
             </div>
           ) : (
-            board.map((entry, index) => (
-              <div
-                key={`${entry.nickname}-${index}`}
-                className={`grid grid-cols-12 gap-2 px-6 py-4 items-center text-sm font-semibold transition-all duration-200 ${
-                  entry.highlight
-                    ? "bg-neonCyan/10 border-l-4 border-neonCyan text-textPrimary shadow-[inset_0_0_12px_rgba(34,211,238,0.15)]"
-                    : "hover:bg-neonViolet/5 text-textMuted hover:text-textPrimary"
-                }`}
-              >
-                {/* Rank */}
-                <div className={`col-span-2 font-bold ${entry.highlight ? "text-neonCyan animate-pulse" : "text-neonViolet"}`}>
-                  #{entry.rank}
-                </div>
+            board.map((entry, index) => {
+              // Row Ranking Polish Colors (Esports gold, silver, bronze tones)
+              let rankStyle = "text-neonViolet";
+              let rowStyle = "hover:bg-neonViolet/5 text-textMuted hover:text-textPrimary";
 
-                {/* Nickname & Class Tag */}
-                <div className="col-span-5 flex items-center gap-3">
-                  <span className={entry.highlight ? "text-neonCyan font-black" : "text-textPrimary"}>
-                    {entry.nickname}
-                  </span>
-                  <span className="hidden sm:inline text-[9px] tracking-wider bg-bgDark border border-neonViolet/20 px-1.5 py-0.5 rounded text-neonViolet font-bold">
-                    {getCategoryLabel(entry.category)}
-                  </span>
-                </div>
+              if (entry.highlight) {
+                // Own submission active row remains highly highlighted in vibrant cyan
+                rowStyle = "bg-neonCyan/10 border-l-4 border-neonCyan text-textPrimary shadow-[inset_0_0_12px_rgba(34,211,238,0.15)]";
+                rankStyle = "text-neonCyan animate-pulse";
+              } else if (entry.rank === "01") {
+                rowStyle = "bg-yellow-500/5 hover:bg-yellow-500/10 border-l-4 border-yellow-500 text-textPrimary shadow-[inset_0_0_10px_rgba(234,179,8,0.05)]";
+                rankStyle = "text-yellow-500 font-black drop-shadow-[0_0_4px_rgba(234,179,8,0.3)]";
+              } else if (entry.rank === "02") {
+                rowStyle = "bg-slate-400/5 hover:bg-slate-400/10 border-l-4 border-slate-400 text-textPrimary shadow-[inset_0_0_10px_rgba(148,163,184,0.05)]";
+                rankStyle = "text-slate-400 font-black drop-shadow-[0_0_4px_rgba(148,163,184,0.3)]";
+              } else if (entry.rank === "03") {
+                rowStyle = "bg-amber-700/5 hover:bg-amber-700/10 border-l-4 border-amber-700 text-textPrimary shadow-[inset_0_0_10px_rgba(180,83,9,0.05)]";
+                rankStyle = "text-amber-700 font-black drop-shadow-[0_0_4px_rgba(180,83,9,0.3)]";
+              }
 
-                {/* Streak */}
-                <div className="col-span-3 text-right text-xs flex items-center justify-end gap-1 text-neonViolet font-bold">
-                  <span>{entry.streak}</span>
-                  <span>🔥</span>
-                </div>
+              return (
+                <div
+                  key={`${entry.nickname}-${index}`}
+                  className={`grid grid-cols-12 gap-2 px-6 py-4 items-center text-sm font-semibold transition-all duration-200 ${rowStyle}`}
+                >
+                  {/* Rank */}
+                  <div className={`col-span-2 font-bold ${rankStyle}`}>
+                    #{entry.rank}
+                  </div>
 
-                {/* Final Score */}
-                <div className={`col-span-2 text-right font-bold ${entry.highlight ? "text-neonCyan animate-pulse" : "text-textPrimary"}`}>
-                  {entry.score.toLocaleString()}
+                  {/* Nickname & Class Tag */}
+                  <div className="col-span-5 flex items-center gap-3">
+                    <span className={entry.highlight ? "text-neonCyan font-black" : "text-textPrimary"}>
+                      {entry.nickname}
+                    </span>
+                    <span className="hidden sm:inline text-[9px] tracking-wider bg-bgDark border border-neonViolet/20 px-1.5 py-0.5 rounded text-neonViolet font-bold">
+                      {getCategoryLabel(entry.category)}
+                    </span>
+                  </div>
+
+                  {/* Streak */}
+                  <div className="col-span-3 text-right text-xs flex items-center justify-end gap-1 text-neonViolet font-bold">
+                    <span>{entry.streak}</span>
+                    <span>🔥</span>
+                  </div>
+
+                  {/* Final Score */}
+                  <div className={`col-span-2 text-right font-bold ${entry.highlight ? "text-neonCyan animate-pulse" : "text-textPrimary"}`}>
+                    {entry.score.toLocaleString()}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

@@ -162,6 +162,9 @@ function QuizContent() {
   const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState<number>(0);
   const [totalCorrectAnswers, setTotalCorrectAnswers] = useState<number>(0);
 
+  // Time Tracker state: total seconds spent in active gameplay
+  const [totalTimeSeconds, setTotalTimeSeconds] = useState<number>(0);
+
   // AI Twin States
   const [isAiTwinActive, setIsAiTwinActive] = useState<boolean>(false);
   const [aiScore, setAiScore] = useState<number>(0);
@@ -340,7 +343,8 @@ function QuizContent() {
     twinActive: boolean,
     twinScore: number,
     twinStreak: number,
-    twinPeakStreak: number
+    twinPeakStreak: number,
+    timeSecs: number
   ) => {
     try {
       const stateObj = {
@@ -360,6 +364,7 @@ function QuizContent() {
         aiScore: twinScore,
         aiStreak: twinStreak,
         aiPeakStreak: twinPeakStreak,
+        totalTimeSeconds: timeSecs,
       };
       const sessionKey = categoryId.includes("_")
         ? `active_quiz_session_${categoryId}`
@@ -436,7 +441,8 @@ function QuizContent() {
     total: number,
     twinActive = false,
     twinScore = 0,
-    twinStreak = 0
+    twinStreak = 0,
+    finalTime = 0
   ) => {
     clearSessionState();
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
@@ -448,6 +454,7 @@ function QuizContent() {
       accuracy,
       correct,
       total,
+      timeTaken: finalTime,
       aiTwinEnabled: twinActive,
       aiScore: twinScore,
       aiStreak: twinStreak,
@@ -455,7 +462,7 @@ function QuizContent() {
     sessionStorage.setItem("impossible_quiz_result", JSON.stringify(resultState));
 
     // Construct search parameters for link sharing
-    let shareUrl = `/results?category=${categoryId}&score=${finalScore}&streak=${finalPeakStreak}&outcome=${outcome}`;
+    let shareUrl = `/results?category=${categoryId}&score=${finalScore}&streak=${finalPeakStreak}&outcome=${outcome}&time=${finalTime}`;
     if (twinActive) {
       shareUrl += `&aiTwin=true&aiScore=${twinScore}&aiStreak=${twinStreak}`;
     }
@@ -564,6 +571,7 @@ function QuizContent() {
         setAlreadyAskedTexts(restored.alreadyAskedTexts);
         setAlreadyAskedIds(restored.alreadyAskedIds);
         setCurrentQuestion(restored.currentQuestion);
+        setTotalTimeSeconds(restored.totalTimeSeconds || 0);
 
         // Restore AI stats
         const activeAi = restored.isAiTwinActive || false;
@@ -605,6 +613,7 @@ function QuizContent() {
       setPeakStreak(0);
       setTotalQuestionsAnswered(0);
       setTotalCorrectAnswers(0);
+      setTotalTimeSeconds(0);
       setCurrentDifficulty(startingDiff);
       setHistory([]);
       setSelectionState("idle");
@@ -644,13 +653,14 @@ function QuizContent() {
           initialAiActive,
           0,
           0,
+          0,
           0
         );
 
         // Prefetch the next question
         triggerPrefetch(firstQuestion, [], askedTexts, askedIds);
       } else {
-        finishQuiz(0, 0, "defeat", 0, 0, initialAiActive, 0, 0);
+        finishQuiz(0, 0, "defeat", 0, 0, initialAiActive, 0, 0, 0);
       }
       setIsLoading(false);
     };
@@ -665,7 +675,7 @@ function QuizContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId]);
 
-  // Handle countdown Timer (re-defined or merged previously)
+  // Handle countdown Timer & Total Time Taken seconds increment
   useEffect(() => {
     if (selectionState !== "idle" || !currentQuestion || isLoading) {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
@@ -677,6 +687,9 @@ function QuizContent() {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
 
     timerIntervalRef.current = setInterval(() => {
+      // Increment total quiz time spent in active gameplay
+      setTotalTimeSeconds((prev) => prev + 1);
+
       setTimer((prev) => {
         if (prev <= 1) {
           clearInterval(timerIntervalRef.current!);
@@ -771,6 +784,7 @@ function QuizContent() {
     let nextScore = score;
     let nextStreak = streak;
     let nextCorrect = totalCorrectAnswers;
+    const finalAccumulatedTime = totalTimeSeconds;
 
     if (correct) {
       // Trigger success flash
@@ -918,7 +932,8 @@ function QuizContent() {
           totalQuestionsAnswered + 1,
           isAiTwinActive,
           nextAiScore,
-          nextAiPeakStreak
+          nextAiPeakStreak,
+          finalAccumulatedTime
         );
         return;
       }
@@ -932,7 +947,8 @@ function QuizContent() {
           totalQuestionsAnswered + 1,
           isAiTwinActive,
           nextAiScore,
-          nextAiPeakStreak
+          nextAiPeakStreak,
+          finalAccumulatedTime
         );
         return;
       }
@@ -981,7 +997,8 @@ function QuizContent() {
           totalQuestionsAnswered + 1,
           isAiTwinActive,
           nextAiScore,
-          nextAiPeakStreak
+          nextAiPeakStreak,
+          finalAccumulatedTime
         );
         return;
       }
@@ -1002,7 +1019,8 @@ function QuizContent() {
         isAiTwinActive,
         nextAiScore,
         nextAiStreak,
-        nextAiPeakStreak
+        nextAiPeakStreak,
+        finalAccumulatedTime
       );
 
       // Reset state for the next question
@@ -1347,15 +1365,15 @@ function QuizContent() {
               ? "border-neonViolet/30 hover:border-neonViolet hover:bg-neonViolet/10"
               : "border-neonViolet/20 hover:border-neonCyan hover:bg-neonCyan/5";
             let letterBgClass = currentQuestion.isBossRound
-              ? "bg-neonViolet/15 group-hover:bg-neonViolet/35 border-neonViolet/40 group-hover:border-neonViolet text-neonViolet"
-              : "bg-neonViolet/10 group-hover:bg-neonCyan/20 border-neonViolet/30 group-hover:border-neonCyan text-neonViolet group-hover:text-neonCyan";
+              ? "bg-neonViolet/15 group-hover:bg-neonViolet/35 border-neonViolet/40 group-hover:border-neonViolet text-neonViolet font-bold"
+              : "bg-neonViolet/10 group-hover:bg-neonCyan/20 border-neonViolet/30 group-hover:border-neonCyan text-neonViolet group-hover:text-neonCyan font-bold";
             let textClass = "text-textMuted group-hover:text-textPrimary";
 
             if (selectionState === "pressing") {
               const isSelectedAnswer = idx === selectedIdx;
               if (isSelectedAnswer) {
                 borderClass = "border-neonCyan bg-neonCyan/5 scale-95 shadow-[0_0_8px_rgba(34,211,238,0.2)]";
-                letterBgClass = "bg-neonCyan/10 border-neonCyan text-neonCyan";
+                letterBgClass = "bg-neonCyan/10 border-neonCyan text-neonCyan font-bold";
                 textClass = "text-textPrimary font-bold";
               } else {
                 borderClass = "border-neonViolet/10 opacity-60";
@@ -1368,11 +1386,11 @@ function QuizContent() {
 
               if (isCorrectAnswer) {
                 borderClass = "border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.5)] animate-correct-option";
-                letterBgClass = "bg-emerald-500 border-emerald-500 text-bgDark";
+                letterBgClass = "bg-emerald-500 border-emerald-500 text-bgDark font-bold";
                 textClass = "text-emerald-400 font-bold";
               } else if (isSelectedAnswer) {
                 borderClass = "border-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-incorrect-option";
-                letterBgClass = "bg-red-500 border-red-500 text-textPrimary";
+                letterBgClass = "bg-red-500 border-red-500 text-textPrimary font-bold";
                 textClass = "text-red-400 font-bold";
               } else {
                 borderClass = "border-neonViolet/10 opacity-30 cursor-not-allowed";
@@ -1393,7 +1411,7 @@ function QuizContent() {
                   selectionState !== "idle" ? "cursor-not-allowed" : "cursor-pointer"
                 } ${borderClass}`}
               >
-                <span className={`w-8 h-8 rounded flex items-center justify-center font-display font-bold mr-4 transition-colors duration-300 ease-in-out border ${letterBgClass}`}>
+                <span className={`w-8 h-8 rounded flex items-center justify-center font-display mr-4 transition-colors duration-300 ease-in-out border ${letterBgClass}`}>
                   {isCorrectAnswer ? (
                     <svg className="w-4 h-4 text-bgDark stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

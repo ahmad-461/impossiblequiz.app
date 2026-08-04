@@ -5,6 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import html2canvas from "html2canvas";
+import {
+  evaluateQuizAchievements,
+  calculateQuizXP,
+  addXP,
+  Achievement,
+} from "../../lib/achievements";
 
 interface QuizResult {
   score: number;
@@ -14,6 +20,8 @@ interface QuizResult {
   accuracy: number;
   correct: number;
   total: number;
+  timeTaken?: number; // total quiz time in seconds
+  evaluated?: boolean; // prevent multiple XP / achievement logs on refresh
   submitted?: boolean;
   submittedId?: string;
   nickname?: string;
@@ -123,21 +131,107 @@ export default function ResultsClient() {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  // Stats / Personal Best states
+  const [personalBest, setPersonalBest] = useState<number | null>(null);
+  const [isNewBest, setIsNewBest] = useState<boolean>(false);
+  const [xpGained, setXpGained] = useState<number>(0);
+
+  // Active toast triggers for newly unlocked achievements
+  const [toastQueue, setToastQueue] = useState<Achievement[]>([]);
+  const [currentToast, setCurrentToast] = useState<Achievement | null>(null);
+
   const searchParams = useSearchParams();
 
-  // Try to load sessionStorage results on mount
+  // Handle sequential toast queue
+  useEffect(() => {
+    if (toastQueue.length > 0 && !currentToast) {
+      const next = toastQueue[0];
+      setCurrentToast(next);
+      setToastQueue((prev) => prev.slice(1));
+    }
+  }, [toastQueue, currentToast]);
+
+  useEffect(() => {
+    if (currentToast) {
+      const timer = setTimeout(() => {
+        setCurrentToast(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentToast]);
+
+  // Try to load sessionStorage results and evaluate achievements on mount
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem("impossible_quiz_result");
       if (stored) {
-        setSessionResult(JSON.parse(stored));
+        const parsed: QuizResult = JSON.parse(stored);
+        setSessionResult(parsed);
+
+        // Personal Best logic (Category + Difficulty unique key)
+        const pbKey = `pb_${parsed.category}`;
+        const storedPBs = sessionStorage.getItem("quiz_personal_bests");
+        const pbs = storedPBs ? JSON.parse(storedPBs) : {};
+        const previousBest = pbs[pbKey] || 0;
+
+        if (parsed.score > previousBest) {
+          pbs[pbKey] = parsed.score;
+          sessionStorage.setItem("quiz_personal_bests", JSON.stringify(pbs));
+          setPersonalBest(parsed.score);
+          if (previousBest > 0) {
+            setIsNewBest(true);
+          }
+        } else {
+          setPersonalBest(previousBest);
+        }
+
+        // Evaluate achievements & XP only once per attempt
+        if (!parsed.evaluated) {
+          const calculatedXp = calculateQuizXP({
+            score: parsed.score,
+            peakStreak: parsed.peakStreak,
+            category: parsed.category,
+            outcome: parsed.outcome,
+            accuracy: parsed.accuracy || 0,
+            correct: parsed.correct || 0,
+            total: parsed.total || 0,
+          });
+
+          setXpGained(calculatedXp);
+          const nextXpTotal = addXP(calculatedXp);
+
+          const newlyUnlocked = evaluateQuizAchievements(
+            {
+              score: parsed.score,
+              peakStreak: parsed.peakStreak,
+              category: parsed.category,
+              outcome: parsed.outcome,
+              accuracy: parsed.accuracy || 0,
+              correct: parsed.correct || 0,
+              total: parsed.total || 0,
+              aiTwinEnabled: parsed.aiTwinEnabled,
+              aiScore: parsed.aiScore,
+              aiStreak: parsed.aiStreak,
+            },
+            nextXpTotal
+          );
+
+          if (newlyUnlocked.length > 0) {
+            setToastQueue((prev) => [...prev, ...newlyUnlocked]);
+          }
+
+          // Save evaluation flag
+          const updated = { ...parsed, evaluated: true };
+          sessionStorage.setItem("impossible_quiz_result", JSON.stringify(updated));
+          setSessionResult(updated);
+        }
       }
     } catch (e) {
       console.error("Failed to read quiz result from sessionStorage:", e);
     }
   }, []);
 
-  // Parse and sanitize query parameters with safety boundaries
+  // Parse and sanitize query parameters with safety boundaries (For link sharing)
   const queryResult = useMemo<QuizResult | null>(() => {
     const pScore = searchParams.get("score");
     const pStreak = searchParams.get("streak");
@@ -146,6 +240,7 @@ export default function ResultsClient() {
     const pAiTwin = searchParams.get("aiTwin");
     const pAiScore = searchParams.get("aiScore");
     const pAiStreak = searchParams.get("aiStreak");
+    const pTime = searchParams.get("time");
 
     if (!pScore && !pCategory && !pOutcome) {
       return null;
@@ -191,6 +286,13 @@ export default function ResultsClient() {
       if (isNaN(aiStreak) || aiStreak < 0) aiStreak = 0;
     }
 
+    // Sanitize Time
+    let timeTaken = 0;
+    if (pTime) {
+      timeTaken = parseInt(pTime, 10);
+      if (isNaN(timeTaken) || timeTaken < 0) timeTaken = 0;
+    }
+
     return {
       score,
       peakStreak,
@@ -199,6 +301,7 @@ export default function ResultsClient() {
       accuracy: 100, // standard display placeholder for shared links
       correct: 10,
       total: 10,
+      timeTaken,
       aiTwinEnabled,
       aiScore,
       aiStreak,
@@ -214,6 +317,7 @@ export default function ResultsClient() {
     accuracy: 0,
     correct: 0,
     total: 0,
+    timeTaken: 0,
     aiTwinEnabled: false,
     aiScore: 0,
     aiStreak: 0,
@@ -255,6 +359,14 @@ export default function ResultsClient() {
   };
 
   const currentConfig = outcomeConfig[activeResult.outcome] || outcomeConfig.defeat;
+
+  // Formatting utility for time
+  const formatTime = (seconds?: number) => {
+    if (seconds === undefined) return "00:00";
+    const mm = Math.floor(seconds / 60);
+    const ss = seconds % 60;
+    return `${mm < 10 ? "0" + mm : mm}:${ss < 10 ? "0" + ss : ss}`;
+  };
 
   // Handle score submission to Supabase
   const handleScoreSubmission = async (e: React.FormEvent) => {
@@ -324,7 +436,7 @@ export default function ResultsClient() {
         : "🛡️ SIMULATION FAILED";
 
     let shareUrl = typeof window !== "undefined"
-      ? `${window.location.origin}/results?score=${activeResult.score}&streak=${activeResult.peakStreak}&category=${activeResult.category}&outcome=${activeResult.outcome}`
+      ? `${window.location.origin}/results?score=${activeResult.score}&streak=${activeResult.peakStreak}&category=${activeResult.category}&outcome=${activeResult.outcome}&time=${activeResult.timeTaken || 0}`
       : "";
 
     let twinDetailText = "";
@@ -352,6 +464,7 @@ Outcome: ${outcomeStr}
 Final Score: ${activeResult.score.toLocaleString()}
 Peak Streak: ${activeResult.peakStreak}
 Accuracy: ${activeResult.accuracy}%
+Time Taken: ${formatTime(activeResult.timeTaken)}
 Questions: ${activeResult.correct}/${activeResult.total}
 ---------------------------------
 ${twinDetailText}Can you survive the AI mainframe? Try now!
@@ -387,6 +500,30 @@ Link: ${shareUrl}`;
     }
   };
 
+  // Extract category and difficulty details for immediate replay navigation
+  const replayPath = useMemo(() => {
+    const isAiTwin = activeResult.aiTwinEnabled ? "true" : "false";
+    const categoryId = activeResult.category;
+
+    if (categoryId.startsWith("programming_")) {
+      return `/quiz?category=${categoryId}&aiTwin=${isAiTwin}`;
+    }
+    if (categoryId.startsWith("business_")) {
+      return `/quiz?category=${categoryId}&aiTwin=${isAiTwin}`;
+    }
+    if (categoryId.startsWith("english_")) {
+      return `/quiz?category=${categoryId}&aiTwin=${isAiTwin}`;
+    }
+    if (
+      categoryId.startsWith("logic-algorithms_") ||
+      categoryId.startsWith("data-analytics_") ||
+      categoryId.startsWith("computer-science-fundamentals_")
+    ) {
+      return `/quiz?category=${categoryId}&aiTwin=${isAiTwin}`;
+    }
+    return `/quiz?category=${categoryId}&aiTwin=${isAiTwin}`;
+  }, [activeResult]);
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none relative animate-page-fade">
       {/* Dynamic Celebratory Background Rings */}
@@ -409,6 +546,30 @@ Link: ${shareUrl}`;
         </div>
       )}
 
+      {/* Newly Unlocked Achievement Notification (Non-blocking sequential toast) */}
+      {currentToast && (
+        <div className="fixed bottom-6 right-6 z-50 border-2 border-neonCyan bg-bgDark shadow-[0_0_15px_rgba(34,211,238,0.25)] px-6 py-4 rounded flex items-center gap-3 animate-page-fade font-display">
+          <div className="text-2xl">{currentToast.icon}</div>
+          <div>
+            <div className="text-xs font-black text-neonCyan uppercase tracking-widest">
+              ACHIEVEMENT UNLOCKED!
+            </div>
+            <div className="text-[11px] text-textPrimary font-bold mt-0.5">
+              {currentToast.title}
+            </div>
+            <div className="text-[9px] text-textMuted mt-0.5">
+              {currentToast.description}
+            </div>
+          </div>
+          <button
+            onClick={() => setCurrentToast(null)}
+            className="text-[10px] text-textMuted hover:text-neonCyan ml-4 focus:outline-none cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Outcome Badge */}
       <div className={`mb-6 inline-flex items-center gap-2 border px-6 py-2.5 rounded-full text-xs md:text-sm font-black font-display tracking-widest uppercase transition-all duration-300 ${
         isVictory ? "animate-bounce" : ""
@@ -420,9 +581,16 @@ Link: ${shareUrl}`;
         {currentConfig.title}
       </h1>
 
-      <p className="text-textMuted max-w-lg text-center text-sm md:text-base mb-10 leading-relaxed">
+      <p className="text-textMuted max-w-lg text-center text-sm md:text-base mb-6 leading-relaxed">
         {currentConfig.desc}
       </p>
+
+      {/* Interactive XP feedback indicator */}
+      {xpGained > 0 && (
+        <div className="mb-6 flex items-center gap-2 text-xs font-bold font-display tracking-widest text-neonCyan animate-pulse">
+          ⚡ INTRUSION TELEMETRY COMMITTED // <span className="text-neonViolet font-black">+{xpGained} XP GAINED</span> ⚡
+        </div>
+      )}
 
       {/* AI Twin Side-by-Side Head-to-Head panel (Visible during gameplay results view) */}
       {activeResult.aiTwinEnabled && (
@@ -514,38 +682,67 @@ Link: ${shareUrl}`;
           </div>
         )}
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center select-none font-display">
-          {/* Score */}
-          <div className="p-4 rounded bg-bgDark/50 border border-neonViolet/10 shadow-[inset_0_0_8px_rgba(168,85,247,0.05)]">
-            <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">FINAL SCORE</span>
-            <span className="text-2xl md:text-3xl font-black text-neonCyan drop-shadow-[0_0_6px_rgba(34,211,238,0.3)]">
+        {/* Primary Stats Panel (Score & Streak) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 font-display text-center select-none">
+          {/* Final Score */}
+          <div className="p-5 rounded border border-neonCyan/40 bg-bgDark/60 shadow-[0_0_10px_rgba(34,211,238,0.1)]">
+            <span className="text-xs tracking-widest text-textMuted block uppercase mb-1 font-bold">FINAL SCORE</span>
+            <span className="text-4xl font-black text-neonCyan drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]">
               {activeResult.score.toLocaleString()}
             </span>
           </div>
 
+          {/* Peak Streak */}
+          <div className="p-5 rounded border border-neonViolet/40 bg-bgDark/60 shadow-[0_0_10px_rgba(168,85,247,0.1)]">
+            <span className="text-xs tracking-widest text-textMuted block uppercase mb-1 font-bold font-display">PEAK STREAK</span>
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-4xl font-black text-neonViolet drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">
+                {activeResult.peakStreak}
+              </span>
+              <span className="text-2xl">🔥</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary Stats Panel (Accuracy, Completed, Time Taken, Best) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center select-none font-display">
           {/* Accuracy */}
-          <div className="p-4 rounded bg-bgDark/50 border border-neonViolet/10 shadow-[inset_0_0_8px_rgba(168,85,247,0.05)]">
-            <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">ACCURACY</span>
-            <span className="text-2xl md:text-3xl font-black text-neonViolet drop-shadow-[0_0_6px_rgba(168,85,247,0.3)]">
+          <div className="p-3 rounded bg-bgDark/40 border border-neonViolet/10 shadow-[inset_0_0_6px_rgba(168,85,247,0.02)]">
+            <span className="text-[9px] tracking-widest text-textMuted block uppercase mb-1">ACCURACY</span>
+            <span className="text-lg font-black text-neonCyan">
               {activeResult.accuracy}%
             </span>
           </div>
 
-          {/* Peak Streak */}
-          <div className="p-4 rounded bg-bgDark/50 border border-neonViolet/10 shadow-[inset_0_0_8px_rgba(168,85,247,0.05)]">
-            <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">PEAK STREAK</span>
-            <span className="text-2xl md:text-3xl font-black text-neonCyan drop-shadow-[0_0_6px_rgba(34,211,238,0.3)]">
-              {activeResult.peakStreak}
+          {/* Completed */}
+          <div className="p-3 rounded bg-bgDark/40 border border-neonViolet/10 shadow-[inset_0_0_6px_rgba(168,85,247,0.02)]">
+            <span className="text-[9px] tracking-widest text-textMuted block uppercase mb-1">COMPLETED</span>
+            <span className="text-lg font-black text-neonViolet">
+              {activeResult.correct}/{activeResult.total}
             </span>
           </div>
 
-          {/* Questions */}
-          <div className="p-4 rounded bg-bgDark/50 border border-neonViolet/10 shadow-[inset_0_0_8px_rgba(168,85,247,0.05)]">
-            <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">COMPLETED</span>
-            <span className="text-2xl md:text-3xl font-black text-neonViolet drop-shadow-[0_0_6px_rgba(168,85,247,0.3)]">
-              {activeResult.correct}/{activeResult.total}
+          {/* Time Taken */}
+          <div className="p-3 rounded bg-bgDark/40 border border-neonViolet/10 shadow-[inset_0_0_6px_rgba(168,85,247,0.02)]">
+            <span className="text-[9px] tracking-widest text-textMuted block uppercase mb-1">TIME TAKEN</span>
+            <span className="text-lg font-black text-neonCyan">
+              {formatTime(activeResult.timeTaken)}
             </span>
+          </div>
+
+          {/* Personal Best */}
+          <div className="p-3 rounded bg-bgDark/40 border border-neonViolet/10 shadow-[inset_0_0_6px_rgba(168,85,247,0.02)] relative">
+            <span className="text-[9px] tracking-widest text-textMuted block uppercase mb-1">PERSONAL BEST</span>
+            <div className="flex flex-col items-center justify-center">
+              <span className="text-lg font-black text-neonViolet">
+                {personalBest !== null ? personalBest.toLocaleString() : "---"}
+              </span>
+              {isNewBest && (
+                <span className="absolute -top-2 right-2 text-[8px] font-bold text-neonCyan bg-neonCyan/10 border border-neonCyan/30 px-1 py-0.5 rounded uppercase tracking-wider animate-bounce">
+                  New Best!
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -625,30 +822,28 @@ Link: ${shareUrl}`;
         )}
       </div>
 
-      {/* Buttons Action Group */}
+      {/* Buttons Action Group (Visually Differentiated: Replay vs New Challenge) */}
       <div className="flex flex-col sm:flex-row items-center gap-6 w-full justify-center font-display">
-        {/* Play Again */}
+        {/* Replay Option: High emphasis neon/solid background for easy replayability */}
         <Link
-          href={
-            activeResult.category.startsWith("programming_")
-              ? `/categories/programming/${activeResult.category.split("_")[1] || "python"}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
-              : activeResult.category.startsWith("business_")
-              ? `/categories/business/${activeResult.category.split("_")[1] || "marketing"}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
-              : activeResult.category.startsWith("english_")
-              ? `/categories/english/${activeResult.category.split("_")[1] || "grammar"}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
-              : activeResult.category.startsWith("logic-algorithms_") || activeResult.category.startsWith("data-analytics_") || activeResult.category.startsWith("computer-science-fundamentals_")
-              ? `/categories/${activeResult.category.split("_")[0]}/difficulty?aiTwin=${activeResult.aiTwinEnabled}`
-              : `/categories?aiTwin=${activeResult.aiTwinEnabled}`
-          }
-          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet"
+          href={replayPath}
+          className="w-full sm:w-auto text-center px-10 py-4 text-base font-black tracking-widest uppercase transition-all duration-300 rounded bg-neonCyan text-bgDark hover:bg-neonCyan/90 hover:shadow-[0_0_20px_rgba(34,211,238,0.6)] focus:outline-none focus:ring-2 focus:ring-neonCyan"
         >
-          PLAY AGAIN
+          REPLAY INSTANTLY 🔄
+        </Link>
+
+        {/* New Challenge Option: Medium emphasis outline style */}
+        <Link
+          href="/categories"
+          className="w-full sm:w-auto text-center px-10 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet"
+        >
+          NEW CHALLENGE
         </Link>
 
         {/* View Leaderboard */}
         <Link
           href="/leaderboard"
-          className="w-full sm:w-auto text-center px-8 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded bg-neonCyan text-bgDark hover:bg-neonCyan/90 hover:shadow-[0_0_20px_rgba(34,211,238,0.6)] focus:outline-none focus:ring-2 focus:ring-neonCyan"
+          className="w-full sm:w-auto text-center px-10 py-4 text-base font-medium tracking-widest uppercase transition-all duration-300 rounded border border-textMuted/40 hover:border-textMuted bg-bgDark hover:bg-textMuted/5 text-textMuted hover:text-textPrimary"
         >
           VIEW LEADERBOARD
         </Link>

@@ -172,6 +172,8 @@ function QuizContent() {
   const [aiPeakStreak, setAiPeakStreak] = useState<number>(0);
   const [aiState, setAiState] = useState<"thinking" | "locked_in" | "answered">("thinking");
   const [aiStatusText, setAiStatusText] = useState<string>("> INITIALIZING COGNITIVE CORE...");
+  const [showAiBoot, setShowAiBoot] = useState<boolean>(false);
+  const [aiBootLines, setAiBootLines] = useState<string[]>([]);
 
   // AI Twin Refs
   const aiWillBeCorrectRef = useRef<boolean>(false);
@@ -187,6 +189,16 @@ function QuizContent() {
   // Current active question & Pre-fetched question
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [nextQuestion, setNextQuestion] = useState<Question | null>(null);
+
+  // Trick interactions states
+  const [showGambleBanner, setShowGambleBanner] = useState<boolean>(false);
+  const [isGambleActive, setIsGambleActive] = useState<boolean>(false);
+  const [gambleAccepted, setGambleAccepted] = useState<boolean>(false);
+  const [gambleBannerText, setGambleBannerText] = useState<string>("");
+  const [isVisualGlitchActive, setIsVisualGlitchActive] = useState<boolean>(false);
+  const [glitchOptions, setGlitchOptions] = useState<string[]>([]);
+  const [originalOptions, setOriginalOptions] = useState<string[]>([]);
+  const [trickConsoleLogs, setTrickConsoleLogs] = useState<string[]>([]);
   const [nextQuestionDifficulty, setNextQuestionDifficulty] = useState<"easy" | "medium" | "hard" | "impossible" | null>(null);
   const [nextQuestionIsBoss, setNextQuestionIsBoss] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -606,6 +618,32 @@ function QuizContent() {
       setAiState("thinking");
       setAiStatusText("> INITIALIZING COGNITIVE CORE...");
 
+      // If AI Twin is active, trigger the brief boot sequence
+      if (initialAiActive) {
+        setShowAiBoot(true);
+        const seq = [
+          "CONNECTING PORTAL 0x3F8A...",
+          "ALLOCATING parallel_cpu_core_v4...",
+          "AI TWIN PROFILE loaded: NEURAL_OPPONENT",
+          "DETERMINING cognitive_thinking_delay (2-8s)...",
+          "SYNCHRONIZING question_stream...",
+          "COGNITIVE MAIN CORE // STABILIZED"
+        ];
+
+        let i = 0;
+        const interval = setInterval(() => {
+          if (i < seq.length) {
+            setAiBootLines((prev) => [...prev, `[iq-twin] ${seq[i]}`]);
+            i++;
+          } else {
+            clearInterval(interval);
+            setTimeout(() => {
+              setShowAiBoot(false);
+            }, 500);
+          }
+        }, 250);
+      }
+
       // Standard clean initialization
       setLives(startingLives);
       setScore(0);
@@ -786,6 +824,9 @@ function QuizContent() {
     let nextCorrect = totalCorrectAnswers;
     const finalAccumulatedTime = totalTimeSeconds;
 
+    // Reset Gamble states for UI layout
+    setShowGambleBanner(false);
+
     if (correct) {
       // Trigger success flash
       setScreenFlash("cyan");
@@ -808,7 +849,13 @@ function QuizContent() {
       if (currentDifficulty === "hard") basePoints = 300;
       if (currentDifficulty === "impossible") basePoints = 500;
 
-      const scoredPoints = Math.round(basePoints * (1 + nextStreak * 0.1));
+      let scoreMultiplier = 1 + nextStreak * 0.1;
+      if (isGambleActive && gambleAccepted) {
+        scoreMultiplier *= 2; // Double multiplier rule!
+        setTrickConsoleLogs((prev) => [...prev, `[gamble] SUCCESS: Double multiplier applied! New multiplier: x${scoreMultiplier.toFixed(1)}`]);
+      }
+
+      const scoredPoints = Math.round(basePoints * scoreMultiplier);
       nextScore += scoredPoints;
       setScore(nextScore);
     } else {
@@ -830,7 +877,15 @@ function QuizContent() {
       setStreak(0);
       nextLives -= 1;
       setLives(nextLives);
+
+      if (isGambleActive && gambleAccepted) {
+        setTrickConsoleLogs((prev) => [...prev, "CRITICAL RISK REALIZED // SYSTEM OVERRIDE FAILED"]);
+      }
     }
+
+    // Reset Gamble Active flag
+    setIsGambleActive(false);
+    setGambleAccepted(false);
 
     // AI Twin Resolution
     let nextAiScore = aiScore;
@@ -1003,6 +1058,80 @@ function QuizContent() {
         return;
       }
 
+      // -------------------------------------------------------------
+      // PART C TRICKY INTERACTIONS TRIGGERS FOR NEXT QUESTION
+      // -------------------------------------------------------------
+
+      // Let's roll independent 5% rates
+      const rollGamble = nextStreak >= 3 && Math.random() < 0.05;
+      const rollVisualGlitch = Math.random() < 0.05;
+      const rollDecoy = (nextDiff === "hard" || nextDiff === "impossible") && Math.random() < 0.05;
+
+      // 1. Double or Nothing Gamble Setup
+      if (rollGamble) {
+        setIsGambleActive(true);
+        setGambleAccepted(false);
+        setShowGambleBanner(true);
+        setGambleBannerText(`⚡ INTRUSION TELEMETRY STREAK: x${nextStreak}. GAMBLE STREAK: Double or Nothing on Next Question?`);
+      } else {
+        setIsGambleActive(false);
+        setGambleAccepted(false);
+        setShowGambleBanner(false);
+      }
+
+      // Setup default options first
+      const optionsToAssign = [...nextActiveQuestion.options];
+
+      // 2. Decoy Options Setup (Hard/Impossible only)
+      if (rollDecoy) {
+        const correctIndex = nextActiveQuestion.correctAnswerIndex;
+        const correctText = nextActiveQuestion.options[correctIndex];
+
+        // Let's generate a subtle decay option (e.g. trailing space, semicolon, or lowercase version)
+        const decoyTypes = [
+          (t: string) => t + " ",
+          (t: string) => t + " ;",
+          (t: string) => {
+            if (t.toLowerCase().includes("true")) return t.replace(/true/i, "True");
+            if (t.toLowerCase().includes("false")) return t.replace(/false/i, "False");
+            if (t.toLowerCase().includes("null")) return t.replace(/null/i, "Null");
+            return t + "\u200B"; // invisible space decoy
+          }
+        ];
+
+        const rollType = decoyTypes[Math.floor(Math.random() * decoyTypes.length)];
+        const decoyText = rollType(correctText);
+
+        // Replace an incorrect option with this decoy option
+        const targetIdx = (correctIndex + 1) % 4;
+        optionsToAssign[targetIdx] = decoyText;
+        setTrickConsoleLogs((prev) => [...prev, `[decoy] DECOY PROTOCOL ENGAGED: Subtle variation generated in option ${["A","B","C","D"][targetIdx]}`]);
+      }
+
+      // 3. Visual Position Shuffling Setup
+      if (rollVisualGlitch) {
+        setIsVisualGlitchActive(true);
+        setOriginalOptions(optionsToAssign);
+
+        // Setup initial randomized options
+        const shuffled = [...optionsToAssign].sort(() => Math.random() - 0.5);
+        setGlitchOptions(shuffled);
+
+        // Fast animate settle back to original after 500ms
+        setTimeout(() => {
+          setIsVisualGlitchActive(false);
+        }, 500);
+      } else {
+        setIsVisualGlitchActive(false);
+        setGlitchOptions([]);
+      }
+
+      // Adjust questions properties for active render if decoys were applied
+      const resolvedQuestion = rollDecoy ? {
+        ...nextActiveQuestion,
+        options: optionsToAssign
+      } : nextActiveQuestion;
+
       // Save persistent state immediately for the next question
       saveSessionState(
         nextLives,
@@ -1015,7 +1144,7 @@ function QuizContent() {
         updatedHistory,
         currentAskedTexts,
         currentAskedIds,
-        nextActiveQuestion,
+        resolvedQuestion,
         isAiTwinActive,
         nextAiScore,
         nextAiStreak,
@@ -1029,7 +1158,7 @@ function QuizContent() {
       setIsCorrectSelection(null);
       setDyingHearts([]);
       setCurrentDifficulty(nextDiff);
-      setCurrentQuestion(nextActiveQuestion);
+      setCurrentQuestion(resolvedQuestion);
 
       // Reset next question slot
       setNextQuestion(null);
@@ -1037,7 +1166,7 @@ function QuizContent() {
       setNextQuestionIsBoss(false);
 
       // Trigger pre-fetch for the subsequent question
-      triggerPrefetch(nextActiveQuestion, updatedHistory, currentAskedTexts, currentAskedIds);
+      triggerPrefetch(resolvedQuestion, updatedHistory, currentAskedTexts, currentAskedIds);
     }, 1800); // 1800ms gives plenty of time for 200ms delay + 500ms feedback, while keeping timing tight
   };
 
@@ -1071,6 +1200,65 @@ function QuizContent() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 md:py-12 max-w-4xl mx-auto w-full select-none animate-page-fade relative">
+      {/* Animated Waveform, AI Boot, and Visual Glitch CSS Rules */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes waveform-slow {
+          0%, 100% { height: 4px; }
+          50% { height: 12px; }
+        }
+        @keyframes waveform-fast {
+          0%, 100% { height: 6px; }
+          50% { height: 16px; }
+        }
+        @keyframes glitch-shuffle {
+          0% { transform: translate(0, 0); filter: hue-rotate(0deg); }
+          20% { transform: translate(-3px, 4px); filter: hue-rotate(90deg) skewX(2deg); }
+          40% { transform: translate(4px, -2px); filter: hue-rotate(180deg) skewX(-2deg); }
+          60% { transform: translate(-4px, -3px); filter: hue-rotate(270deg); }
+          80% { transform: translate(3px, 2px); filter: skewX(1deg); }
+          100% { transform: translate(0, 0); filter: none; }
+        }
+        .animate-waveform-slow {
+          animation: waveform-slow 0.8s ease-in-out infinite;
+        }
+        .animate-waveform-fast {
+          animation: waveform-fast 0.5s ease-in-out infinite;
+        }
+        .animate-glitch-shuffle {
+          animation: glitch-shuffle 0.4s ease-in-out;
+        }
+      `}} />
+
+      {/* Optional Simulated AI Twin Boot Sequence Overlay */}
+      {showAiBoot && (
+        <div className="fixed inset-0 z-50 bg-bgDark/95 flex flex-col items-center justify-center font-mono p-6">
+          <div className="w-full max-w-md p-6 border-2 border-neonCyan bg-black/80 rounded shadow-[0_0_30px_rgba(34,211,238,0.2)]">
+            <div className="flex justify-between items-center border-b border-neonCyan/20 pb-2 mb-4">
+              <span className="text-neonCyan text-xs font-bold font-display uppercase tracking-widest">
+                🤖 IQ-TWIN SYSTEM INITIALIZATION
+              </span>
+              <span className="w-2 h-2 rounded-full bg-neonCyan animate-ping"></span>
+            </div>
+            <div className="text-xs text-textMuted flex flex-col gap-2 h-44 overflow-y-auto pr-2 select-text">
+              {aiBootLines.map((line, idx) => (
+                <div key={idx} className="animate-page-fade">
+                  {line}
+                </div>
+              ))}
+              <div className="animate-pulse text-neonCyan mt-2 font-bold">
+                &gt; LOADING SYNAPTIC INTERACTION BRIDGE...
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAiBoot(false)}
+              className="mt-6 w-full py-2.5 bg-neonCyan text-bgDark font-display font-black text-xs tracking-widest uppercase hover:bg-neonCyan/90 transition-all duration-300 rounded"
+            >
+              SKIP CALIBRATION ⚡
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* True full-screen edge flash overlays */}
       {screenFlash === "cyan" && (
         <div className="fixed inset-0 pointer-events-none z-50 animate-screen-edge-cyan-flash"></div>
@@ -1096,6 +1284,38 @@ function QuizContent() {
           {diffTransition.type === "promote" && (
             <div className="absolute inset-0 bg-glow-sweep opacity-20 rounded-lg pointer-events-none"></div>
           )}
+        </div>
+      )}
+
+      {/* Optional Top-Banner Double or Nothing Gamble Prompt */}
+      {showGambleBanner && (
+        <div className="w-full bg-[#150a25] border-2 border-neonCyan p-4 rounded mb-6 font-display text-center relative overflow-hidden shadow-[0_0_15px_rgba(34,211,238,0.2)] animate-page-fade">
+          <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-neonCyan"></div>
+          <p className="text-xs font-black text-neonCyan uppercase tracking-widest mb-3">
+            {gambleBannerText}
+          </p>
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={() => {
+                setGambleAccepted(true);
+                setShowGambleBanner(false);
+                setTrickConsoleLogs((prev) => [...prev, "[gamble] ACCEPTED: Streak multiplier is now DOUBLED for this question."]);
+              }}
+              className="px-6 py-2 bg-neonCyan text-bgDark text-[10px] font-black tracking-widest uppercase hover:bg-neonCyan/90 transition-all duration-300 rounded shadow-[0_0_10px_rgba(34,211,238,0.4)]"
+            >
+              ACCEPT RISK ⚡
+            </button>
+            <button
+              onClick={() => {
+                setGambleAccepted(false);
+                setShowGambleBanner(false);
+                setTrickConsoleLogs((prev) => [...prev, "[gamble] SKIPPED: Risk averted. Continuing with normal scoring."]);
+              }}
+              className="px-6 py-2 border border-neonCyan/40 text-neonCyan text-[10px] font-black tracking-widest uppercase hover:bg-neonCyan/10 transition-all duration-300 rounded"
+            >
+              SKIP SYSTEM 🛡️
+            </button>
+          </div>
         </div>
       )}
 
@@ -1190,11 +1410,31 @@ function QuizContent() {
           </div>
 
           {/* AI Twin HUD */}
-          <div className="p-4 rounded bg-bgDark border-2 border-neonViolet flex flex-col justify-between gap-3 relative overflow-hidden shadow-[inset_0_0_8px_rgba(168,85,247,0.05),0_0_15px_rgba(168,85,247,0.1)]">
-            <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-neonViolet"></div>
+          <div className={`p-4 rounded bg-bgDark border-2 flex flex-col justify-between gap-3 relative overflow-hidden transition-all duration-300 ${
+            aiState === "locked_in"
+              ? "border-neonCyan shadow-[0_0_20px_rgba(34,211,238,0.3)] animate-pulse"
+              : "border-neonViolet shadow-[inset_0_0_8px_rgba(168,85,247,0.05),0_0_15px_rgba(168,85,247,0.1)]"
+          }`}>
+            <div className={`absolute top-0 right-0 w-2.5 h-2.5 transition-colors duration-300 ${
+              aiState === "locked_in" ? "bg-neonCyan" : "bg-neonViolet"
+            }`}></div>
             <div className="flex justify-between items-center select-none font-display">
-              <span className="text-[10px] tracking-widest text-neonViolet font-black uppercase">AI_TWIN_HUD // ACTIVE</span>
-              <span className="text-[9px] tracking-widest text-textMuted uppercase">02</span>
+              <span className={`text-[10px] tracking-widest font-black uppercase transition-colors duration-300 ${
+                aiState === "locked_in" ? "text-neonCyan" : "text-neonViolet"
+              }`}>AI_TWIN_HUD // {aiState === "locked_in" ? "LOCKED IN" : "ACTIVE"}</span>
+
+              {/* Animated Waveform Core Indicator */}
+              <div className="flex items-center gap-0.5 h-3">
+                <div className={`w-0.5 bg-neonViolet rounded-full transition-all duration-300 ${
+                  aiState === "thinking" ? "animate-waveform-slow h-3" : aiState === "locked_in" ? "bg-neonCyan h-1.5 animate-bounce" : "h-1"
+                }`}></div>
+                <div className={`w-0.5 bg-neonViolet rounded-full transition-all duration-300 ${
+                  aiState === "thinking" ? "animate-waveform-fast h-2" : aiState === "locked_in" ? "bg-neonCyan h-3 animate-ping" : "h-1.5"
+                }`}></div>
+                <div className={`w-0.5 bg-neonViolet rounded-full transition-all duration-300 ${
+                  aiState === "thinking" ? "animate-waveform-slow h-4" : aiState === "locked_in" ? "bg-neonCyan h-2 animate-bounce" : "h-1"
+                }`}></div>
+              </div>
             </div>
             <div className="flex justify-between items-center gap-2">
               {/* Status */}
@@ -1319,6 +1559,17 @@ function QuizContent() {
           </div>
         )}
 
+        {/* Live Trick Interaction Terminal Stream */}
+        {trickConsoleLogs.length > 0 && (
+          <div className="mb-6 bg-black/60 border border-neonCyan/20 rounded p-3 font-mono text-[10px] text-neonCyan/80 flex flex-col gap-1 select-text">
+            {trickConsoleLogs.slice(-2).map((log, idx) => (
+              <div key={idx} className="animate-page-fade">
+                &gt; {log}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex flex-wrap justify-between items-center gap-4">
           <span className={`text-[10px] font-display tracking-widest px-2.5 py-1 rounded uppercase border ${
             currentQuestion.isBossRound
@@ -1357,8 +1608,11 @@ function QuizContent() {
 
         {/* Answer Options */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {currentQuestion.options.map((option: string, idx: number) => {
+          {(isVisualGlitchActive ? glitchOptions : currentQuestion.options).map((option: string, idx: number) => {
             const letters = ["A", "B", "C", "D"];
+
+            // Find actual original index in case visual glitch is shuffling options
+            const originalIdx = isVisualGlitchActive ? originalOptions.indexOf(option) : idx;
 
             // Selection feedback styles
             let borderClass = currentQuestion.isBossRound
@@ -1370,7 +1624,7 @@ function QuizContent() {
             let textClass = "text-textMuted group-hover:text-textPrimary";
 
             if (selectionState === "pressing") {
-              const isSelectedAnswer = idx === selectedIdx;
+              const isSelectedAnswer = originalIdx === selectedIdx;
               if (isSelectedAnswer) {
                 borderClass = "border-neonCyan bg-neonCyan/5 scale-95 shadow-[0_0_8px_rgba(34,211,238,0.2)]";
                 letterBgClass = "bg-neonCyan/10 border-neonCyan text-neonCyan font-bold";
@@ -1381,8 +1635,8 @@ function QuizContent() {
                 textClass = "text-textMuted";
               }
             } else if (selectionState === "revealed") {
-              const isCorrectAnswer = idx === currentQuestion.correctAnswerIndex;
-              const isSelectedAnswer = idx === selectedIdx;
+              const isCorrectAnswer = originalIdx === currentQuestion.correctAnswerIndex;
+              const isSelectedAnswer = originalIdx === selectedIdx;
 
               if (isCorrectAnswer) {
                 borderClass = "border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.5)] animate-correct-option";
@@ -1399,17 +1653,17 @@ function QuizContent() {
               }
             }
 
-            const isCorrectAnswer = selectionState === "revealed" && idx === currentQuestion.correctAnswerIndex;
+            const isCorrectAnswer = selectionState === "revealed" && originalIdx === currentQuestion.correctAnswerIndex;
 
             return (
               <button
                 key={idx}
-                onClick={() => handleOptionSelect(idx)}
+                onClick={() => handleOptionSelect(originalIdx)}
                 disabled={selectionState !== "idle"}
                 aria-label={`Option ${letters[idx]}: ${option}`}
                 className={`group flex items-center p-4 rounded border text-left transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-neonCyan ${
                   selectionState !== "idle" ? "cursor-not-allowed" : "cursor-pointer"
-                } ${borderClass}`}
+                } ${borderClass} ${isVisualGlitchActive ? "animate-glitch-shuffle" : ""}`}
               >
                 <span className={`w-8 h-8 rounded flex items-center justify-center font-display mr-4 transition-colors duration-300 ease-in-out border ${letterBgClass}`}>
                   {isCorrectAnswer ? (

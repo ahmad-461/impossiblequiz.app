@@ -189,9 +189,133 @@ function QuizContent() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Feedback Selection State
-  const [selectionState, setSelectionState] = useState<"idle" | "selected">("idle");
+  const [selectionState, setSelectionState] = useState<"idle" | "pressing" | "revealed">("idle");
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isCorrectSelection, setIsCorrectSelection] = useState<boolean | null>(null);
+
+  // New Animations & Visual Cue States
+  const [screenFlash, setScreenFlash] = useState<"none" | "cyan" | "red">("none");
+  const [cardFeedback, setCardFeedback] = useState<"none" | "shake-red">("none");
+  const [streakAnimation, setStreakAnimation] = useState<"none" | "pop" | "deflate">("none");
+  const [dyingHearts, setDyingHearts] = useState<number[]>([]);
+  const [diffTransition, setDiffTransition] = useState<{
+    type: "none" | "promote" | "demote";
+    from: string;
+    to: string;
+  }>({ type: "none", from: "", to: "" });
+
+  const [displayedScore, setDisplayedScore] = useState<number>(0);
+  const [displayedAiScore, setDisplayedAiScore] = useState<number>(0);
+
+  const scoreRef = useRef<number>(0);
+  const aiScoreRef = useRef<number>(0);
+
+  // Sync refs to avoid stale closures
+  useEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
+
+  useEffect(() => {
+    aiScoreRef.current = aiScore;
+  }, [aiScore]);
+
+  // Score smoothly counts up (Player)
+  useEffect(() => {
+    const targetScore = score;
+    const startValue = displayedScore;
+    const diff = targetScore - startValue;
+    if (diff === 0) return;
+
+    const duration = 500;
+    const startTime = performance.now();
+    let animationFrameId: number;
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeProgress = progress * (2 - progress);
+      const currentVal = Math.round(startValue + diff * easeProgress);
+      setDisplayedScore(currentVal);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setDisplayedScore(targetScore);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [score]);
+
+  // Score smoothly counts up (AI Twin)
+  useEffect(() => {
+    const targetAiScore = aiScore;
+    const startValue = displayedAiScore;
+    const diff = targetAiScore - startValue;
+    if (diff === 0) return;
+
+    const duration = 500;
+    const startTime = performance.now();
+    let animationFrameId: number;
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeProgress = progress * (2 - progress);
+      const currentVal = Math.round(startValue + diff * easeProgress);
+      setDisplayedAiScore(currentVal);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setDisplayedAiScore(targetAiScore);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiScore]);
+
+  // Track difficulty changes to trigger overlays
+  const prevDiffRef = useRef<"easy" | "medium" | "hard" | "impossible" | null>(null);
+
+  useEffect(() => {
+    if (prevDiffRef.current === null) {
+      prevDiffRef.current = currentDifficulty;
+      return;
+    }
+
+    const prev = prevDiffRef.current;
+    if (prev !== currentDifficulty) {
+      const difficultyRank = { easy: 1, medium: 2, hard: 3, impossible: 4 };
+      const prevRank = difficultyRank[prev] || 1;
+      const currRank = difficultyRank[currentDifficulty] || 1;
+
+      if (currRank > prevRank) {
+        setDiffTransition({
+          type: "promote",
+          from: prev.toUpperCase(),
+          to: currentDifficulty.toUpperCase()
+        });
+        setTimeout(() => {
+          setDiffTransition({ type: "none", from: "", to: "" });
+        }, 1500);
+      } else if (currRank < prevRank) {
+        setDiffTransition({
+          type: "demote",
+          from: prev.toUpperCase(),
+          to: currentDifficulty.toUpperCase()
+        });
+        setTimeout(() => {
+          setDiffTransition({ type: "none", from: "", to: "" });
+        }, 1500);
+      }
+      prevDiffRef.current = currentDifficulty;
+    }
+  }, [currentDifficulty]);
 
   // Timer state
   const [timer, setTimer] = useState<number>(30);
@@ -486,6 +610,7 @@ function QuizContent() {
       setSelectionState("idle");
       setSelectedIdx(null);
       setIsCorrectSelection(null);
+      setDyingHearts([]);
       setTimer(initialTimer);
 
       // Clear pre-fetches
@@ -540,9 +665,9 @@ function QuizContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId]);
 
-  // Handle countdown Timer
+  // Handle countdown Timer (re-defined or merged previously)
   useEffect(() => {
-    if (selectionState === "selected" || !currentQuestion || isLoading) {
+    if (selectionState !== "idle" || !currentQuestion || isLoading) {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       return;
     }
@@ -622,7 +747,7 @@ function QuizContent() {
 
   // Unified logic to process an answer (either select option or timeout)
   const processAnswer = async (correct: boolean, chosenIdx: number | null) => {
-    if (selectionState === "selected" || !currentQuestion) return;
+    if (selectionState !== "idle" || !currentQuestion) return;
 
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
 
@@ -630,8 +755,14 @@ function QuizContent() {
     if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
     if (aiStatusIntervalRef.current) clearInterval(aiStatusIntervalRef.current);
 
-    setSelectionState("selected");
+    // 1. Initial Snappy Pressing State (200ms)
+    setSelectionState("pressing");
     setSelectedIdx(chosenIdx);
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // 2. Full Correct / Incorrect Reveal State
+    setSelectionState("revealed");
     setIsCorrectSelection(correct);
 
     setTotalQuestionsAnswered((prev) => prev + 1);
@@ -642,6 +773,13 @@ function QuizContent() {
     let nextCorrect = totalCorrectAnswers;
 
     if (correct) {
+      // Trigger success flash
+      setScreenFlash("cyan");
+      setTimeout(() => setScreenFlash("none"), 500);
+
+      setStreakAnimation("pop");
+      setTimeout(() => setStreakAnimation("none"), 500);
+
       nextCorrect += 1;
       setTotalCorrectAnswers(nextCorrect);
 
@@ -660,6 +798,20 @@ function QuizContent() {
       nextScore += scoredPoints;
       setScore(nextScore);
     } else {
+      // Trigger error flash and card shake
+      setScreenFlash("red");
+      setTimeout(() => setScreenFlash("none"), 500);
+
+      setCardFeedback("shake-red");
+      setTimeout(() => setCardFeedback("none"), 500);
+
+      setStreakAnimation("deflate");
+      setTimeout(() => setStreakAnimation("none"), 600);
+
+      // Track breaking heart index (e.g. if previous lives is 3, the 3rd heart breaks)
+      const heartIdxToBreak = nextLives + 1;
+      setDyingHearts((prev) => [...prev, heartIdxToBreak]);
+
       nextStreak = 0;
       setStreak(0);
       nextLives -= 1;
@@ -753,6 +905,8 @@ function QuizContent() {
     const isGameOver = nextLives <= 0;
     const isBossVictory = correct && (currentQuestion.isBossRound || (currentDifficulty === "impossible" && totalQuestionsAnswered + 1 >= 10));
 
+    // We adjust the delay so that gameplay remains tight.
+    // The visual reveal animation takes place during this wait.
     setTimeout(async () => {
       if (isGameOver) {
         const finalOutcome = currentQuestion.isBossRound ? "boss_defeat" : "defeat";
@@ -855,6 +1009,7 @@ function QuizContent() {
       setSelectionState("idle");
       setSelectedIdx(null);
       setIsCorrectSelection(null);
+      setDyingHearts([]);
       setCurrentDifficulty(nextDiff);
       setCurrentQuestion(nextActiveQuestion);
 
@@ -865,7 +1020,7 @@ function QuizContent() {
 
       // Trigger pre-fetch for the subsequent question
       triggerPrefetch(nextActiveQuestion, updatedHistory, currentAskedTexts, currentAskedIds);
-    }, 2000);
+    }, 1800); // 1800ms gives plenty of time for 200ms delay + 500ms feedback, while keeping timing tight
   };
 
   // Define timeout function
@@ -878,7 +1033,7 @@ function QuizContent() {
   });
 
   const handleOptionSelect = (idx: number) => {
-    if (selectionState === "selected" || !currentQuestion) return;
+    if (selectionState !== "idle" || !currentQuestion) return;
     const correct = idx === currentQuestion.correctAnswerIndex;
     processAnswer(correct, idx);
   };
@@ -897,7 +1052,35 @@ function QuizContent() {
   const categoryDisplayName = catInfo.displayName;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 md:py-12 max-w-4xl mx-auto w-full select-none animate-page-fade">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 md:py-12 max-w-4xl mx-auto w-full select-none animate-page-fade relative">
+      {/* True full-screen edge flash overlays */}
+      {screenFlash === "cyan" && (
+        <div className="fixed inset-0 pointer-events-none z-50 animate-screen-edge-cyan-flash"></div>
+      )}
+      {screenFlash === "red" && (
+        <div className="fixed inset-0 pointer-events-none z-50 animate-screen-edge-red-flash"></div>
+      )}
+
+      {/* Centered level promotion/demotion badge overlay */}
+      {diffTransition.type !== "none" && (
+        <div className={`fixed top-1/2 left-1/2 z-50 pointer-events-none px-8 py-5 rounded-lg border-2 text-center shadow-2xl font-display uppercase tracking-widest ${
+          diffTransition.type === "promote"
+            ? "bg-[#150a25] border-neonCyan text-neonCyan animate-level-up"
+            : "bg-[#12131e] border-neonViolet/50 text-neonViolet animate-level-down"
+        }`}>
+          <div className="text-[10px] text-textMuted mb-1">Adaptive Core Notification</div>
+          <div className="text-xl font-black mb-2">
+            {diffTransition.type === "promote" ? "▲ LEVEL UP ▲" : "▼ ADAPTIVE SHIFT ▼"}
+          </div>
+          <div className="text-xs font-mono font-bold">
+            {diffTransition.from} → <span className={diffTransition.type === "promote" ? "text-neonCyan" : "text-neonViolet"}>{diffTransition.to}</span>
+          </div>
+          {diffTransition.type === "promote" && (
+            <div className="absolute inset-0 bg-glow-sweep opacity-20 rounded-lg pointer-events-none"></div>
+          )}
+        </div>
+      )}
+
       {/* Category header details */}
       <div className="w-full text-center md:text-left mb-6 flex justify-between items-center border-b border-neonViolet/15 pb-2">
         <div className="flex flex-col">
@@ -911,7 +1094,7 @@ function QuizContent() {
         <div className="flex items-center gap-2">
           <div className="text-right">
             <span className="text-[10px] font-display tracking-widest text-textMuted block uppercase mb-1">TIMER</span>
-            <span className={`text-sm font-black font-display transition-colors duration-200 ${timer <= 5 ? "text-neonViolet animate-pulse" : "text-neonCyan"}`}>
+            <span className={`text-sm font-black font-display transition-all duration-200 ${timer <= 5 ? "animate-timer-urgent text-neonViolet font-bold" : "text-neonCyan"}`}>
               {timer < 10 ? `00:0${timer}` : `00:${timer}`}
             </span>
           </div>
@@ -935,15 +1118,20 @@ function QuizContent() {
                 <span className="text-[9px] tracking-widest text-textMuted uppercase mb-1">SHIELD</span>
                 <div className="flex gap-1">
                   {Array.from({ length: currentDifficulty === "impossible" ? 1 : 3 }).map((_, idx) => {
-                    const heart = idx + 1;
+                    const heartIdx = idx + 1;
+                    const isBreaking = dyingHearts.includes(heartIdx);
                     return (
                       <span
-                        key={heart}
+                        key={heartIdx}
                         className={`text-base transition-all duration-300 ${
-                          heart <= lives ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]" : "opacity-20 scale-90"
+                          isBreaking
+                            ? "animate-heart-break"
+                            : heartIdx <= lives
+                            ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]"
+                            : "opacity-20 scale-90"
                         }`}
                       >
-                        ❤️
+                        {isBreaking ? "💔" : "❤️"}
                       </span>
                     );
                   })}
@@ -957,7 +1145,17 @@ function QuizContent() {
                   <span className={`text-sm font-black text-neonViolet font-display ${streak > 0 ? "animate-streak-pulse" : ""}`}>
                     {streak}
                   </span>
-                  <span className={`text-sm transition-transform duration-300 ${streak > 0 ? "scale-110" : "opacity-35"}`}>
+                  <span className={`text-sm transition-all duration-300 ${
+                    streakAnimation === "pop"
+                      ? "animate-flame-pop"
+                      : streakAnimation === "deflate"
+                      ? "animate-flame-deflate"
+                      : streak > 0
+                      ? "scale-110"
+                      : "opacity-35"
+                  } ${
+                    streak >= 10 ? "streak-glow-10" : streak >= 5 ? "streak-glow-5" : streak >= 3 ? "streak-glow-3" : ""
+                  }`}>
                     🔥
                   </span>
                 </div>
@@ -966,7 +1164,9 @@ function QuizContent() {
               {/* Score */}
               <div className="flex flex-col items-end font-display">
                 <span className="text-[9px] tracking-widest text-textMuted uppercase mb-1">SCORE</span>
-                <span className="text-sm font-black text-neonCyan">{score.toLocaleString()}</span>
+                <span className={`text-sm font-black text-neonCyan transition-all duration-300 ${
+                  score !== displayedScore ? "animate-score-pop" : ""
+                }`}>{displayedScore.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -1001,7 +1201,7 @@ function QuizContent() {
               {/* Score */}
               <div className="flex flex-col items-end font-display">
                 <span className="text-[9px] tracking-widest text-textMuted uppercase mb-1">SCORE</span>
-                <span className="text-sm font-black text-neonCyan">{aiScore.toLocaleString()}</span>
+                <span className="text-sm font-black text-neonCyan">{displayedAiScore.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -1015,15 +1215,20 @@ function QuizContent() {
               <span className="text-[10px] font-display tracking-widest text-textMuted uppercase mb-1">SHIELD</span>
               <div className="flex gap-1">
                 {Array.from({ length: currentDifficulty === "impossible" ? 1 : 3 }).map((_, idx) => {
-                  const heart = idx + 1;
+                  const heartIdx = idx + 1;
+                  const isBreaking = dyingHearts.includes(heartIdx);
                   return (
                     <span
-                      key={heart}
+                      key={heartIdx}
                       className={`text-lg transition-all duration-300 ${
-                        heart <= lives ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]" : "opacity-20 scale-90"
+                        isBreaking
+                          ? "animate-heart-break"
+                          : heartIdx <= lives
+                          ? "opacity-100 scale-100 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]"
+                          : "opacity-20 scale-90"
                       }`}
                     >
-                      ❤️
+                      {isBreaking ? "💔" : "❤️"}
                     </span>
                   );
                 })}
@@ -1040,7 +1245,17 @@ function QuizContent() {
                 >
                   {streak}
                 </span>
-                <span className={`text-base transition-transform duration-300 ${streak > 0 ? "scale-110" : "opacity-35"}`}>
+                <span className={`text-base transition-all duration-300 ${
+                  streakAnimation === "pop"
+                    ? "animate-flame-pop"
+                    : streakAnimation === "deflate"
+                    ? "animate-flame-deflate"
+                    : streak > 0
+                    ? "scale-110"
+                    : "opacity-35"
+                } ${
+                  streak >= 10 ? "streak-glow-10" : streak >= 5 ? "streak-glow-5" : streak >= 3 ? "streak-glow-3" : ""
+                }`}>
                   🔥
                 </span>
               </div>
@@ -1049,8 +1264,10 @@ function QuizContent() {
             {/* Score */}
             <div className="text-left md:text-right">
               <span className="text-[10px] font-display tracking-widest text-textMuted block uppercase mb-1">SCORE</span>
-              <span className="text-sm font-black text-neonCyan font-display">
-                {score.toLocaleString()}
+              <span className={`text-sm font-black text-neonCyan font-display transition-all duration-300 ${
+                score !== displayedScore ? "animate-score-pop" : ""
+              }`}>
+                {displayedScore.toLocaleString()}
               </span>
             </div>
           </div>
@@ -1070,6 +1287,8 @@ function QuizContent() {
         currentQuestion.isBossRound
           ? "bg-gradient-to-b from-[#150a25] to-bgDark border-2 border-neonViolet shadow-[0_0_25px_rgba(168,85,247,0.3)] animate-pulse"
           : "bg-bgDark border-2 border-neonViolet/30 shadow-[0_0_15px_rgba(168,85,247,0.1)]"
+      } ${
+        cardFeedback === "shake-red" ? "animate-card-shake animate-card-red-flash" : ""
       }`}>
         {/* Glow corners decoration */}
         <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-neonCyan"></div>
@@ -1132,18 +1351,29 @@ function QuizContent() {
               : "bg-neonViolet/10 group-hover:bg-neonCyan/20 border-neonViolet/30 group-hover:border-neonCyan text-neonViolet group-hover:text-neonCyan";
             let textClass = "text-textMuted group-hover:text-textPrimary";
 
-            if (selectionState === "selected") {
+            if (selectionState === "pressing") {
+              const isSelectedAnswer = idx === selectedIdx;
+              if (isSelectedAnswer) {
+                borderClass = "border-neonCyan bg-neonCyan/5 scale-95 shadow-[0_0_8px_rgba(34,211,238,0.2)]";
+                letterBgClass = "bg-neonCyan/10 border-neonCyan text-neonCyan";
+                textClass = "text-textPrimary font-bold";
+              } else {
+                borderClass = "border-neonViolet/10 opacity-60";
+                letterBgClass = "bg-neonViolet/5 border-neonViolet/10 text-textMuted";
+                textClass = "text-textMuted";
+              }
+            } else if (selectionState === "revealed") {
               const isCorrectAnswer = idx === currentQuestion.correctAnswerIndex;
               const isSelectedAnswer = idx === selectedIdx;
 
               if (isCorrectAnswer) {
-                borderClass = "border-neonCyan bg-neonCyan/10 shadow-[0_0_10px_rgba(34,211,238,0.4)]";
-                letterBgClass = "bg-neonCyan border-neonCyan text-bgDark";
-                textClass = "text-neonCyan font-bold";
+                borderClass = "border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.5)] animate-correct-option";
+                letterBgClass = "bg-emerald-500 border-emerald-500 text-bgDark";
+                textClass = "text-emerald-400 font-bold";
               } else if (isSelectedAnswer) {
-                borderClass = "border-neonViolet bg-neonViolet/10 shadow-[0_0_10px_rgba(168,85,247,0.4)]";
-                letterBgClass = "bg-neonViolet border-neonViolet text-textPrimary";
-                textClass = "text-neonViolet font-bold";
+                borderClass = "border-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-incorrect-option";
+                letterBgClass = "bg-red-500 border-red-500 text-textPrimary";
+                textClass = "text-red-400 font-bold";
               } else {
                 borderClass = "border-neonViolet/10 opacity-30 cursor-not-allowed";
                 letterBgClass = "bg-neonViolet/5 border-neonViolet/10 text-textMuted";
@@ -1151,18 +1381,24 @@ function QuizContent() {
               }
             }
 
+            const isCorrectAnswer = selectionState === "revealed" && idx === currentQuestion.correctAnswerIndex;
+
             return (
               <button
                 key={idx}
                 onClick={() => handleOptionSelect(idx)}
-                disabled={selectionState === "selected"}
+                disabled={selectionState !== "idle"}
                 aria-label={`Option ${letters[idx]}: ${option}`}
                 className={`group flex items-center p-4 rounded border text-left transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-neonCyan ${
-                  selectionState === "selected" ? "cursor-not-allowed" : "cursor-pointer"
+                  selectionState !== "idle" ? "cursor-not-allowed" : "cursor-pointer"
                 } ${borderClass}`}
               >
                 <span className={`w-8 h-8 rounded flex items-center justify-center font-display font-bold mr-4 transition-colors duration-300 ease-in-out border ${letterBgClass}`}>
-                  {letters[idx]}
+                  {isCorrectAnswer ? (
+                    <svg className="w-4 h-4 text-bgDark stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : letters[idx]}
                 </span>
                 <span className={`text-sm font-semibold transition-colors duration-300 ease-in-out flex-1 ${textClass}`}>
                   {option}
@@ -1174,11 +1410,11 @@ function QuizContent() {
       </div>
 
       {/* Answer Feedback Alert Banner */}
-      {selectionState === "selected" && (
+      {selectionState === "revealed" && (
         <div className={`w-full py-4 px-6 rounded mb-6 mt-6 border font-display text-center tracking-wider text-xs md:text-sm transition-all duration-300 ${
           isCorrectSelection
-            ? "bg-neonCyan/10 border-neonCyan/40 text-neonCyan shadow-[0_0_15px_rgba(34,211,238,0.2)] animate-pulse"
-            : "bg-neonViolet/10 border-neonViolet/40 text-neonViolet shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+            ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] animate-pulse"
+            : "bg-red-500/10 border-red-500/40 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
         }`}>
           {isCorrectSelection ? (
             <span>{"🚀 INTRUSION SUCCESSFUL // SCORE GAINED +STREAK MULTIPLIER 🚀"}</span>

@@ -130,12 +130,16 @@ const getCategoryLabel = (cat: string): string => {
   return mapping[cat] || "SYS.CORE";
 };
 
+import { getCumulativeXP } from "../../lib/achievements";
+
 function LeaderboardContent() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [recentFeeds, setRecentFeeds] = useState<RecentSubmission[]>([]);
+  const [savedNickname, setSavedNickname] = useState<string | null>(null);
+  const [playerXP, setPlayerXP] = useState<number>(0);
 
   // Retrieve user results state from sessionStorage
   const getUserSessionResult = () => {
@@ -181,6 +185,15 @@ function LeaderboardContent() {
       }
     }
     fetchRecentSubmissions();
+
+    // Get nickname and XP from localStorage
+    try {
+      const nick = localStorage.getItem("impossible_quiz_nickname");
+      setSavedNickname(nick);
+      setPlayerXP(getCumulativeXP());
+    } catch (e) {
+      console.error("Failed to read user nickname/XP on leaderboard:", e);
+    }
   }, []);
 
   const loadLeaderboard = useCallback(async () => {
@@ -471,6 +484,12 @@ function LeaderboardContent() {
                     <span className="hidden sm:inline text-[9px] tracking-wider bg-bgDark border border-neonViolet/20 px-1.5 py-0.5 rounded text-neonViolet font-bold">
                       {getCategoryLabel(entry.category)}
                     </span>
+                    {/* Level / XP Badge enrichment display client-side only (Part A) */}
+                    {savedNickname && entry.nickname && savedNickname.trim().toUpperCase() === entry.nickname.trim().toUpperCase() && (
+                      <span className="text-[9px] tracking-widest bg-neonCyan/10 border border-neonCyan/30 px-1.5 py-0.5 rounded text-neonCyan font-black animate-pulse">
+                        LVL {Math.floor(Math.sqrt(playerXP / 50)) + 1}
+                      </span>
+                    )}
                   </div>
 
                   {/* Streak */}

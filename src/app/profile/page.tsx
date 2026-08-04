@@ -40,9 +40,19 @@ const formatCategoryDisplayName = (id: string): string => {
 
 import { useMemo } from "react";
 
+import { supabase } from "../../../lib/supabase";
+
+interface CategoryRank {
+  category: string;
+  rank: number;
+}
+
 export default function ProfilePage() {
   const [cumulativeXP, setCumulativeXP] = useState<number>(0);
   const [unlockedCount, setUnlockedCount] = useState<number>(0);
+  const [nickname, setNickname] = useState<string | null>(null);
+  const [ranks, setRanks] = useState<CategoryRank[]>([]);
+  const [loadingRanks, setLoadingRanks] = useState<boolean>(false);
   const [stats, setStats] = useState<LifetimeStats>({
     totalQuizzesPlayed: 0,
     totalCorrectAnswers: 0,
@@ -61,6 +71,57 @@ export default function ProfilePage() {
       const statsStr = localStorage.getItem("impossible_quiz_player_stats");
       if (statsStr) {
         setStats(JSON.parse(statsStr));
+      }
+
+      const nick = localStorage.getItem("impossible_quiz_nickname");
+      setNickname(nick);
+
+      if (nick) {
+        setLoadingRanks(true);
+        // Query Supabase to find best ranks for each category
+        const queryRanks = async () => {
+          try {
+            const { data, error } = await supabase
+              .from("leaderboard")
+              .select("nickname, score, category")
+              .order("score", { ascending: false });
+
+            if (!error && data) {
+              // Group and rank records per category
+              const groups: Record<string, typeof data> = {};
+              data.forEach((row) => {
+                const cat = row.category;
+                if (!groups[cat]) {
+                  groups[cat] = [];
+                }
+                groups[cat].push(row);
+              });
+
+              const matchedRanks: CategoryRank[] = [];
+
+              for (const [cat, rows] of Object.entries(groups)) {
+                // Find matching user row index
+                const userIdx = rows.findIndex(
+                  (r) => r.nickname && r.nickname.trim().toUpperCase() === nick.trim().toUpperCase()
+                );
+                if (userIdx !== -1) {
+                  matchedRanks.push({
+                    category: cat,
+                    rank: userIdx + 1,
+                  });
+                }
+              }
+
+              setRanks(matchedRanks);
+            }
+          } catch (err) {
+            console.error("Failed to query user ranks:", err);
+          } finally {
+            setLoadingRanks(false);
+          }
+        };
+
+        queryRanks();
       }
     } catch (e) {
       console.error("Failed to parse player stats:", e);
@@ -229,6 +290,40 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Dynamic Leaderboard matching rankings (Part A) */}
+        {nickname && (
+          <div className="mt-6 border-t border-neonViolet/10 pt-6 text-left font-mono">
+            <div className="p-4 rounded border border-neonCyan/20 bg-bgDark/40">
+              <span className="text-[10px] tracking-widest text-neonCyan block uppercase font-bold mb-3">
+                📡 GLOBAL HALL OF CHAMPIONS TELEMETRY // MATCHED Ranks:
+              </span>
+              <div className="flex flex-col gap-1 text-xs">
+                <div className="text-textMuted mb-2">
+                  ACTOR PROFILE IDENTIFIER: <span className="text-neonCyan font-bold uppercase">{nickname}</span>
+                </div>
+                {loadingRanks ? (
+                  <div className="text-textMuted animate-pulse text-[11px]">&gt; Querying mainframe databanks...</div>
+                ) : ranks.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                    {ranks.map((r, i) => (
+                      <div key={i} className="flex justify-between items-center bg-bgDark border border-neonViolet/10 p-2 rounded">
+                        <span className="text-textMuted truncate mr-2">{formatCategoryDisplayName(r.category)}</span>
+                        <Link href="/leaderboard" className="text-neonCyan font-bold hover:underline shrink-0">
+                          Rank #{r.rank}
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-textMuted text-[11px]">
+                    &gt; No leaderboard placements detected for this handle yet. Submit a score on the results screen to record your rank.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom Action Nav buttons */}

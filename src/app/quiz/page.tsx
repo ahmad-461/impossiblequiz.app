@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { Question } from "../../lib/questions";
 import SystemLogLoader from "../../components/SystemLogLoader";
+import { sound } from "../../lib/sound";
 
 const parseCategoryInfo = (id: string) => {
   if (id.startsWith("programming_")) {
@@ -828,6 +829,9 @@ function QuizContent() {
     setShowGambleBanner(false);
 
     if (correct) {
+      // Play correct chime
+      sound.playCorrect();
+
       // Trigger success flash
       setScreenFlash("cyan");
       setTimeout(() => setScreenFlash("none"), 500);
@@ -859,6 +863,13 @@ function QuizContent() {
       nextScore += scoredPoints;
       setScore(nextScore);
     } else {
+      // Play incorrect tone or life lost
+      if (nextLives - 1 <= 0) {
+        sound.playLifeLost();
+      } else {
+        sound.playIncorrect();
+      }
+
       // Trigger error flash and card shake
       setScreenFlash("red");
       setTimeout(() => setScreenFlash("none"), 500);

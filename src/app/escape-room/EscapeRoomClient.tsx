@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { escapeRoomQuestions } from "../../lib/escapeRoomQuestions";
+import { sound } from "../../lib/sound";
 
 export default function EscapeRoomPage() {
   const router = useRouter();
@@ -137,6 +138,9 @@ export default function EscapeRoomPage() {
     setSelectedIdx(idx);
 
     if (isCorrect) {
+      // Play correct beep
+      sound.playCorrect();
+
       // Correct!
       setFeedbackType("correct");
 
@@ -159,6 +163,9 @@ export default function EscapeRoomPage() {
       setTimeout(() => setIsFlashingRed(false), 500);
 
       if (remainingAttempts <= 0) {
+        // Play serious drone for failed room lockout
+        sound.playLifeLost();
+
         // Run out of attempts for this room (FR-20)
         setFeedbackType("lockout");
 
@@ -170,6 +177,9 @@ export default function EscapeRoomPage() {
           moveToNextRoom(newStatus, currentRoomIdx + 1);
         }, 2000);
       } else {
+        // Play incorrect chiptune tone
+        sound.playIncorrect();
+
         // Incorrect but can retry (FR-20)
         setFeedbackType("incorrect");
 
@@ -210,10 +220,37 @@ export default function EscapeRoomPage() {
     return `${mm < 10 ? "0" + mm : mm}:${ss < 10 ? "0" + ss : ss}`;
   };
 
+  // Compute corruption-scaled styles (Part B)
+  // Shift colors from cool cyan/violet in Room 1 towards warning amber/intense red by Room 7, with Room 8 being highly warning red
+  const isFinalRoom = currentRoomIdx === 7;
+  const progressRatio = currentRoomIdx / 7; // 0 to 1
+
+  // Dynamic visual parameters
+  const scanlineSpeed = isFinalRoom ? "1s" : `${4 - progressRatio * 3}s`;
+  const accentColor = isFinalRoom
+    ? "#ef4444" // Intense red for Room 8
+    : progressRatio < 0.4
+    ? "#22d3ee" // Cyan
+    : progressRatio < 0.85
+    ? "#f59e0b" // Amber warning
+    : "#ef4444"; // Warning red
+
+  const borderAccentColor = isFinalRoom
+    ? "rgba(239, 68, 68, 0.8)"
+    : progressRatio < 0.4
+    ? "rgba(34, 211, 238, 0.3)"
+    : progressRatio < 0.85
+    ? "rgba(245, 158, 11, 0.4)"
+    : "rgba(239, 68, 68, 0.6)";
+
+  const glowShadow = isFinalRoom
+    ? "0 0 30px rgba(239, 68, 68, 0.25)"
+    : `0 0 20px rgba(${progressRatio < 0.4 ? "34, 211, 238" : progressRatio < 0.85 ? "245, 158, 11" : "239, 68, 68"}, ${0.08 + progressRatio * 0.12})`;
+
   // Render HTML / JSX
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 md:py-12 max-w-4xl mx-auto w-full select-none relative overflow-hidden">
-      {/* Immersive slow glowing drift atmospheric overlay */}
+      {/* Immersive slow glowing drift atmospheric overlay with dynamic escalation */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes drift-slow {
           0% { background-position: 0% 0%; }
@@ -221,8 +258,8 @@ export default function EscapeRoomPage() {
           100% { background-position: 0% 0%; }
         }
         .atmospheric-escape {
-          background: radial-gradient(circle at 10% 20%, rgba(168, 85, 247, 0.05) 0%, rgba(10, 11, 16, 0) 70%),
-                      radial-gradient(circle at 90% 80%, rgba(34, 211, 238, 0.04) 0%, rgba(10, 11, 16, 0) 70%);
+          background: radial-gradient(circle at 10% 20%, rgba(${isFinalRoom ? "239, 68, 68" : "168, 85, 247"}, ${isFinalRoom ? "0.12" : "0.05"}) 0%, rgba(10, 11, 16, 0) 70%),
+                      radial-gradient(circle at 90% 80%, rgba(${progressRatio < 0.4 ? "34, 211, 238" : "245, 158, 11"}, ${isFinalRoom ? "0.1" : "0.04"}) 0%, rgba(10, 11, 16, 0) 70%);
           background-size: 200% 200%;
           animation: drift-slow 30s ease-in-out infinite;
         }
@@ -235,17 +272,30 @@ export default function EscapeRoomPage() {
           display: block;
           position: absolute;
           top: 0; left: 0; bottom: 0; right: 0;
-          background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+          background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
           z-index: 20;
-          background-size: 100% 3px, 6px 100%;
+          background-size: 100% 3px;
           pointer-events: none;
         }
-        .screenglow {
-          box-shadow: inset 0 0 40px rgba(168, 85, 247, 0.05);
+        @keyframes mainframe-critical-flicker {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.25; }
+        }
+        .mainframe-critical-glow {
+          animation: mainframe-critical-flicker 1.5s infinite ease-in-out;
         }
       `}} />
 
       <div className="absolute inset-0 atmospheric-escape pointer-events-none -z-10"></div>
+
+      {/* Dynamic scanline overlay with scaled speed */}
+      <div
+        style={{
+          animation: `scanline ${scanlineSpeed} linear infinite`,
+          backgroundColor: isFinalRoom ? "rgba(239, 68, 68, 0.05)" : `rgba(245, 158, 11, ${progressRatio * 0.03})`
+        }}
+        className="absolute top-0 left-0 w-full h-[1px] pointer-events-none z-10"
+      ></div>
 
       {/* FLASH RED ALERT EFFECT */}
       {isFlashingRed && (
@@ -304,13 +354,32 @@ export default function EscapeRoomPage() {
       {gameState === "playing" && currentQuestion && (
         <div className="w-full flex flex-col gap-6 animate-page-fade">
 
+          {/* Room 8 Climactic Visuals Warning Banner */}
+          {isFinalRoom && (
+            <div className="w-full bg-red-950/40 border-2 border-red-500/70 p-4 rounded text-center relative overflow-hidden shadow-[0_0_20px_rgba(239,68,68,0.3)] animate-pulse">
+              <div className="absolute inset-0 bg-red-500/5 mainframe-critical-glow pointer-events-none"></div>
+              <div className="text-xs font-black text-red-500 uppercase tracking-widest font-display">
+                ⚠️ CRITICAL MAINFRAME INTRUSION // CLIMACTIC LEVEL 08 ⚠️
+              </div>
+              <div className="text-[10px] text-textMuted font-mono mt-1">
+                SYSTEM CORRUPTION AT MAXIMUM VECTOR DETECTED. BYPASS FIREWALL TO COMPLETE BREACH.
+              </div>
+            </div>
+          )}
+
           {/* Header Status Bar */}
-          <div className="w-full flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 border-b border-neonViolet/20 pb-4">
+          <div
+            style={{ borderBottomColor: borderAccentColor }}
+            className="w-full flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 border-b pb-4"
+          >
 
             {/* Title & Progress */}
             <div className="flex flex-col text-center md:text-left font-display">
               <span className="text-[9px] tracking-widest text-textMuted uppercase font-bold">CORRUPTED SYSTEM ESCAPE</span>
-              <span className="text-sm font-black text-neonCyan uppercase tracking-wider">
+              <span
+                style={{ color: accentColor }}
+                className="text-sm font-black uppercase tracking-wider transition-colors duration-300"
+              >
                 ROOM_0{currentQuestion.roomNumber} {" // "} LEVEL_{currentQuestion.difficulty.toUpperCase()}
               </span>
             </div>
@@ -323,7 +392,9 @@ export default function EscapeRoomPage() {
                 let textVal: string | number = index + 1;
 
                 if (isActive) {
-                  bgStyle = "bg-neonCyan/10 border-neonCyan text-neonCyan shadow-[0_0_8px_rgba(34,211,238,0.3)] animate-pulse";
+                  bgStyle = isFinalRoom
+                    ? "bg-red-500/10 border-red-500 text-red-500 shadow-[0_0_12px_rgba(239,68,68,0.4)] animate-pulse"
+                    : "bg-neonCyan/10 border-neonCyan text-neonCyan shadow-[0_0_8px_rgba(34,211,238,0.3)] animate-pulse";
                 } else if (status === "cleared") {
                   bgStyle = "bg-green-500/10 border-green-500 text-green-500";
                   textVal = "✓";
@@ -404,10 +475,42 @@ export default function EscapeRoomPage() {
                 width: `${(timeLeft / 300) * 100}%`,
                 background: timeLeft < 60
                   ? "linear-gradient(to right, #ef4444, #f59e0b)"
+                  : isFinalRoom
+                  ? "linear-gradient(to right, #ef4444, #b91c1c)"
                   : "linear-gradient(to right, #22d3ee, #a855f7)",
               }}
               className="h-full transition-all duration-1000"
             ></div>
+          </div>
+
+          {/* Horizontal System Breach Depth progress meter (Part B) */}
+          <div className="w-full bg-[#0a0b10] border border-neonViolet/20 p-3 rounded flex flex-col gap-2 font-mono select-none">
+            <div className="flex justify-between items-center text-[9px] text-textMuted tracking-wider">
+              <span>SECURITY BREACH DEPTH STATUS:</span>
+              <span style={{ color: accentColor }} className="font-bold">
+                {isFinalRoom ? "CORE SECTOR REACHED // CLIMACTIC CORE 100%" : `MAINFRAME PENETRATION: ${Math.round(progressRatio * 100)}%`}
+              </span>
+            </div>
+            <div className="w-full h-2.5 bg-black/60 rounded border border-neonViolet/10 overflow-hidden flex relative">
+              <div
+                style={{
+                  width: `${((currentRoomIdx + 1) / 8) * 100}%`,
+                  background: isFinalRoom
+                    ? "linear-gradient(90deg, #ef4444, #b91c1c)"
+                    : "linear-gradient(90deg, #22d3ee, #a855f7)",
+                  boxShadow: isFinalRoom
+                    ? "0 0 10px rgba(239, 68, 68, 0.5)"
+                    : "0 0 10px rgba(34, 211, 238, 0.3)"
+                }}
+                className="h-full transition-all duration-500 rounded"
+              ></div>
+              {/* Overlay segments for 8 rooms */}
+              <div className="absolute inset-0 flex justify-between">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="h-full w-[1px] bg-[#0a0b10]/40"></div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Dynamic Failure counter warn banner */}
@@ -433,10 +536,16 @@ export default function EscapeRoomPage() {
           </div>
 
           {/* Room Question Interactive Panel */}
-          <div className="w-full bg-bgDark border-2 border-neonViolet/30 rounded-lg p-6 md:p-8 relative screenglow shadow-[0_0_15px_rgba(168,85,247,0.06)]">
+          <div
+            style={{
+              borderColor: borderAccentColor,
+              boxShadow: glowShadow
+            }}
+            className="w-full bg-bgDark border-2 rounded-lg p-6 md:p-8 relative transition-all duration-300"
+          >
             {/* Corners overlay */}
-            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-neonViolet/50"></div>
-            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-neonViolet/50"></div>
+            <div style={{ borderTopColor: borderAccentColor, borderRightColor: borderAccentColor }} className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2"></div>
+            <div style={{ borderBottomColor: borderAccentColor, borderLeftColor: borderAccentColor }} className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2"></div>
 
             <span className="text-[10px] font-display tracking-widest text-textMuted font-bold uppercase block mb-4">
               [ CHALLENGE INTERFACE ]
@@ -451,8 +560,8 @@ export default function EscapeRoomPage() {
               {currentQuestion.options.map((option: string, idx: number) => {
                 const letters = ["A", "B", "C", "D", "E"];
 
-                let borderStyle = { borderColor: "rgba(168, 85, 247, 0.2)" };
-                let letterStyle = { borderColor: "rgba(168, 85, 247, 0.3)", backgroundColor: "rgba(168, 85, 247, 0.1)", color: "#a855f7" };
+                let borderStyle = { borderColor: borderAccentColor };
+                let letterStyle = { borderColor: borderAccentColor, backgroundColor: `rgba(${accentColor === "#22d3ee" ? "34, 211, 238" : accentColor === "#f59e0b" ? "245, 158, 11" : "239, 68, 68"}, 0.15)`, color: accentColor };
                 let textStyle = { color: "#9ca3af" };
 
                 if (selectedIdx !== null) {
@@ -488,9 +597,9 @@ export default function EscapeRoomPage() {
                     onClick={() => handleOptionSelect(idx)}
                     disabled={selectedIdx !== null}
                     style={borderStyle}
-                    className={`group option-btn w-full flex items-center p-4 rounded border text-left transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-neonCyan ${
+                    className={`group option-btn w-full flex items-center p-4 rounded border text-left transition-all duration-300 ease-in-out focus:outline-none focus:ring-1 focus:ring-neonCyan ${
                       selectedIdx === null
-                        ? "hover:border-neonCyan hover:bg-neonCyan/5 cursor-pointer"
+                        ? "hover:border-neonCyan hover:bg-neonCyan/5 cursor-pointer hover:scale-[1.01]"
                         : "cursor-default"
                     }`}
                   >

@@ -4,10 +4,25 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { isSoundEnabled, setSoundEnabled } from "../lib/sound";
+
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    setSoundOn(isSoundEnabled());
+
+    const handleSoundToggle = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setSoundOn(customEvent.detail);
+    };
+
+    window.addEventListener("sound-toggle-updated", handleSoundToggle);
+    return () => window.removeEventListener("sound-toggle-updated", handleSoundToggle);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,6 +44,12 @@ export default function Header() {
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  const toggleSound = () => {
+    const nextState = !soundOn;
+    setSoundOn(nextState);
+    setSoundEnabled(nextState);
+  };
 
   const navLinks = [
     { href: "/", label: "cd /home" },
@@ -159,17 +180,46 @@ export default function Header() {
             })}
           </nav>
 
+          {/* Desktop/Tablet Sound Mute Toggle */}
+          <div className="hidden sm:flex items-center gap-4">
+            <button
+              onClick={toggleSound}
+              className={`font-mono text-xs tracking-widest font-bold border rounded px-3 py-1.5 focus:outline-none transition-all duration-300 ease-in-out ${
+                soundOn
+                  ? "border-neonCyan bg-neonCyan/10 text-neonCyan shadow-[0_0_10px_rgba(34,211,238,0.25)]"
+                  : "border-neonViolet/30 bg-bgDark/40 text-textMuted hover:border-neonViolet/60 hover:text-textPrimary"
+              }`}
+            >
+              {soundOn ? "🔊 SOUND: ON" : "🔇 SOUND: OFF"}
+            </button>
+          </div>
+
           {/* Mobile Terminal-style $ Prompt Button */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            type="button"
-            className="flex md:hidden items-center justify-center w-10 h-10 border border-neonCyan/30 hover:border-neonCyan rounded bg-bgDark/60 text-neonCyan font-mono text-lg font-bold shadow-[0_0_8px_rgba(34,211,238,0.2)] focus:outline-none transition-all duration-300 ease-in-out"
-            aria-label="Toggle Navigation Menu"
-            aria-expanded={menuOpen}
-          >
-            <span>$</span>
-            <span className="terminal-blink font-light text-neonCyan ml-0.5">_</span>
-          </button>
+          <div className="flex md:hidden items-center gap-3">
+            {/* Mobile Sound Toggle */}
+            <button
+              onClick={toggleSound}
+              className={`font-mono text-xs border rounded w-10 h-10 flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out ${
+                soundOn
+                  ? "border-neonCyan bg-neonCyan/10 text-neonCyan shadow-[0_0_8px_rgba(34,211,238,0.2)]"
+                  : "border-neonViolet/20 bg-bgDark/60 text-textMuted"
+              }`}
+              aria-label="Toggle Sound"
+            >
+              <span>{soundOn ? "🔊" : "🔇"}</span>
+            </button>
+
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              type="button"
+              className="flex items-center justify-center w-10 h-10 border border-neonCyan/30 hover:border-neonCyan rounded bg-bgDark/60 text-neonCyan font-mono text-lg font-bold shadow-[0_0_8px_rgba(34,211,238,0.2)] focus:outline-none transition-all duration-300 ease-in-out"
+              aria-label="Toggle Navigation Menu"
+              aria-expanded={menuOpen}
+            >
+              <span>$</span>
+              <span className="terminal-blink font-light text-neonCyan ml-0.5">_</span>
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu Dropdown Slider (Styled as Floating Terminal Box) */}

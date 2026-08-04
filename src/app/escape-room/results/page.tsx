@@ -9,6 +9,7 @@ import {
   Achievement,
   ACHIEVEMENTS,
 } from "../../../lib/achievements";
+import { sound } from "../../../lib/sound";
 
 interface EscapeRoomResult {
   outcome: "escaped" | "trapped";
@@ -34,6 +35,7 @@ export default function EscapeRoomResultsPage() {
       const next = toastQueue[0];
       setCurrentToast(next);
       setToastQueue((prev) => prev.slice(1));
+      sound.playAchievement();
     }
   }, [toastQueue, currentToast]);
 
@@ -56,6 +58,13 @@ export default function EscapeRoomResultsPage() {
         // Evaluate achievements & XP only once per attempt
         if (!parsed.evaluated) {
           const isEscaped = parsed.outcome === "escaped";
+
+          // Play ending sound effect cue
+          if (isEscaped) {
+            sound.playVictory();
+          } else {
+            sound.playLifeLost();
+          }
 
           // Calculate Escape Room XP:
           // Escaped: 100 XP base, Trapped: 5 XP per cleared room

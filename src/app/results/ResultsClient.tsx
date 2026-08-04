@@ -11,6 +11,7 @@ import {
   addXP,
   Achievement,
 } from "../../lib/achievements";
+import { sound } from "../../lib/sound";
 
 interface QuizResult {
   score: number;
@@ -151,6 +152,7 @@ export default function ResultsClient() {
       const next = toastQueue[0];
       setCurrentToast(next);
       setToastQueue((prev) => prev.slice(1));
+      sound.playAchievement();
     }
   }, [toastQueue, currentToast]);
 
@@ -368,6 +370,13 @@ export default function ResultsClient() {
     };
   }, [queryResult, sessionResult]);
 
+  // Play triumph sound on load if victory
+  useEffect(() => {
+    if (activeResult && (activeResult.outcome === "boss_victory" || activeResult.outcome === "pool_victory")) {
+      sound.playVictory();
+    }
+  }, [activeResult]);
+
   // Trigger race bar animation after results load
   useEffect(() => {
     if (activeResult.aiTwinEnabled) {
@@ -441,6 +450,9 @@ export default function ResultsClient() {
     setSubmitError(null);
 
     try {
+      // Save latest nickname persistently to localStorage for profile and leaderboard matching
+      localStorage.setItem("impossible_quiz_nickname", sanitized);
+
       const { data, error } = await supabase
         .from("leaderboard")
         .insert({
@@ -727,8 +739,16 @@ Link: ${shareUrl}`;
 
       {/* Interactive XP feedback indicator */}
       {xpGained > 0 && (
-        <div className="mb-6 flex items-center gap-2 text-xs font-bold font-display tracking-widest text-neonCyan animate-pulse">
-          ⚡ INTRUSION TELEMETRY COMMITTED // <span className="text-neonViolet font-black">+{xpGained} XP GAINED</span> ⚡
+        <div className="mb-6 flex flex-col sm:flex-row items-center gap-3 text-xs font-bold font-display tracking-widest text-neonCyan animate-pulse">
+          <span>⚡ INTRUSION TELEMETRY COMMITTED // <span className="text-neonViolet font-black">+{xpGained} XP GAINED</span> ⚡</span>
+          {toastQueue.length > 0 || currentToast || (sessionResult && sessionResult.evaluated) ? (
+            <Link
+              href="/profile"
+              className="text-neonCyan border border-neonCyan/30 bg-neonCyan/5 hover:bg-neonCyan/20 px-3 py-1 rounded transition-all duration-300 ease-in-out hover:shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:scale-105"
+            >
+              View in Profile →
+            </Link>
+          ) : null}
         </div>
       )}
 

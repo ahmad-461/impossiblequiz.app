@@ -4,23 +4,40 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getCumulativeXP } from "../lib/achievements";
 
+import { isSoundEnabled, setSoundEnabled } from "../lib/sound";
+
 export default function Footer() {
   const [uptimeSeconds, setUptimeSeconds] = useState(0);
   const [cumulativeXP, setCumulativeXP] = useState(0);
+  const [soundOn, setSoundOn] = useState(false);
 
-  // Read cumulative XP on mount and react to updates
+  // Read cumulative XP and sound state on mount and react to updates
   useEffect(() => {
     setCumulativeXP(getCumulativeXP());
+    setSoundOn(isSoundEnabled());
 
     const handleXpUpdate = () => {
       setCumulativeXP(getCumulativeXP());
     };
 
+    const handleSoundToggle = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setSoundOn(customEvent.detail);
+    };
+
     window.addEventListener("xp-updated", handleXpUpdate);
+    window.addEventListener("sound-toggle-updated", handleSoundToggle);
     return () => {
       window.removeEventListener("xp-updated", handleXpUpdate);
+      window.removeEventListener("sound-toggle-updated", handleSoundToggle);
     };
   }, []);
+
+  const toggleSound = () => {
+    const nextState = !soundOn;
+    setSoundOn(nextState);
+    setSoundEnabled(nextState);
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -83,9 +100,9 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto relative z-10 flex flex-col gap-6">
         {/* Row 1: System Status Dashboard Readout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-center border border-neonViolet/20 bg-bgDark/40 p-4 rounded font-mono text-xs md:text-sm tracking-widest text-textMuted">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-center border border-neonViolet/20 bg-bgDark/40 p-4 rounded font-mono text-xs md:text-sm tracking-widest text-textMuted">
           {/* Status Indicator */}
-          <div className="flex items-center gap-2 justify-center md:justify-start">
+          <div className="flex items-center gap-2 justify-center lg:justify-start">
             <span className="text-neonViolet/60">STATUS:</span>
             <span className="text-neonCyan font-bold flex items-center gap-2">
               ONLINE
@@ -95,7 +112,7 @@ export default function Footer() {
 
           {/* Uptime Counter */}
           <div className="flex items-center gap-2 justify-center">
-            <span className="text-neonViolet/60">SESSION UPTIME:</span>
+            <span className="text-neonViolet/60">UPTIME:</span>
             <span className="text-textPrimary font-bold tabular-nums">
               {formatUptime(uptimeSeconds)}
             </span>
@@ -109,8 +126,19 @@ export default function Footer() {
             </span>
           </div>
 
+          {/* Sound Toggle */}
+          <div className="flex items-center gap-2 justify-center">
+            <span className="text-neonViolet/60">AUDIO:</span>
+            <button
+              onClick={toggleSound}
+              className="text-neonCyan font-bold hover:text-textPrimary transition-all duration-300 focus:outline-none"
+            >
+              {soundOn ? "[ 🔊 ON ]" : "[ 🔇 OFF ]"}
+            </button>
+          </div>
+
           {/* Build Version */}
-          <div className="flex items-center gap-2 justify-center md:justify-end">
+          <div className="flex items-center gap-2 justify-center lg:justify-end">
             <span className="text-neonViolet/60">BUILD:</span>
             <span className="text-neonCyan font-bold">
               v1.0-STABLE

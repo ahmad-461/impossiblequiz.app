@@ -36,6 +36,7 @@ export default function Header() {
     { href: "/leaderboard", label: "cd /leaderboard" },
     { href: "/escape-room", label: "./escape-room" },
     { href: "/achievements", label: "cd /achievements" },
+    { href: "/profile", label: "cd /profile" },
   ];
 
   return (

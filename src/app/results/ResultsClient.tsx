@@ -136,6 +136,9 @@ export default function ResultsClient() {
   const [isNewBest, setIsNewBest] = useState<boolean>(false);
   const [xpGained, setXpGained] = useState<number>(0);
 
+  // Animated score race bar states
+  const [raceProgress, setRaceProgress] = useState<number>(0);
+
   // Active toast triggers for newly unlocked achievements
   const [toastQueue, setToastQueue] = useState<Achievement[]>([]);
   const [currentToast, setCurrentToast] = useState<Achievement | null>(null);
@@ -159,6 +162,7 @@ export default function ResultsClient() {
       return () => clearTimeout(timer);
     }
   }, [currentToast]);
+
 
   // Try to load sessionStorage results and evaluate achievements on mount
   useEffect(() => {
@@ -218,6 +222,45 @@ export default function ResultsClient() {
 
           if (newlyUnlocked.length > 0) {
             setToastQueue((prev) => [...prev, ...newlyUnlocked]);
+          }
+
+          // -------------------------------------------------------------
+          // Save lifetime stats to local storage for the Profile Page
+          // -------------------------------------------------------------
+          try {
+            const statsStr = localStorage.getItem("impossible_quiz_player_stats");
+            const stats = statsStr ? JSON.parse(statsStr) : {
+              totalQuizzesPlayed: 0,
+              totalCorrectAnswers: 0,
+              totalQuestionsAnswered: 0,
+              aiTwinWins: 0,
+              aiTwinLosses: 0,
+              aiTwinTies: 0,
+              categoryPlayCounts: {} as Record<string, number>,
+            };
+
+            stats.totalQuizzesPlayed += 1;
+            stats.totalCorrectAnswers += (parsed.correct || 0);
+            stats.totalQuestionsAnswered += (parsed.total || 0);
+
+            // Track category play counts
+            const cat = parsed.category || "programming";
+            stats.categoryPlayCounts[cat] = (stats.categoryPlayCounts[cat] || 0) + 1;
+
+            // Track AI Twin outcomes
+            if (parsed.aiTwinEnabled) {
+              if (parsed.score > (parsed.aiScore || 0)) {
+                stats.aiTwinWins += 1;
+              } else if (parsed.score < (parsed.aiScore || 0)) {
+                stats.aiTwinLosses += 1;
+              } else {
+                stats.aiTwinTies += 1;
+              }
+            }
+
+            localStorage.setItem("impossible_quiz_player_stats", JSON.stringify(stats));
+          } catch (err) {
+            console.error("Failed to update profile stats in localStorage:", err);
           }
 
           // Save evaluation flag
@@ -309,21 +352,37 @@ export default function ResultsClient() {
   }, [searchParams]);
 
   // Merge: Query params take precedence if present and valid (for public link sharing)
-  const activeResult: QuizResult = queryResult || sessionResult || {
-    score: 0,
-    peakStreak: 0,
-    category: "programming",
-    outcome: "defeat",
-    accuracy: 0,
-    correct: 0,
-    total: 0,
-    timeTaken: 0,
-    aiTwinEnabled: false,
-    aiScore: 0,
-    aiStreak: 0,
-  };
+  const activeResult: QuizResult = useMemo(() => {
+    return queryResult || sessionResult || {
+      score: 0,
+      peakStreak: 0,
+      category: "programming",
+      outcome: "defeat",
+      accuracy: 0,
+      correct: 0,
+      total: 0,
+      timeTaken: 0,
+      aiTwinEnabled: false,
+      aiScore: 0,
+      aiStreak: 0,
+    };
+  }, [queryResult, sessionResult]);
+
+  // Trigger race bar animation after results load
+  useEffect(() => {
+    if (activeResult.aiTwinEnabled) {
+      setRaceProgress(0);
+      const timer = setTimeout(() => {
+        setRaceProgress(1);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeResult]);
 
   const isVictory = activeResult.outcome === "boss_victory" || activeResult.outcome === "pool_victory";
+  const isBossVictory = activeResult.outcome === "boss_victory";
+  const isPoolCleared = activeResult.outcome === "pool_victory";
+  const isDefeat = activeResult.outcome === "defeat" || activeResult.outcome === "boss_defeat";
 
   const categoryName = formatCategoryName(activeResult.category);
 
@@ -339,22 +398,22 @@ export default function ResultsClient() {
       badge: "🏆 SYSTEM OVERLOAD // CLEARED 🏆",
       title: "POOL CLEARED",
       desc: `All available query challenges in ${categoryName} have been exhausted. You successfully survived the entire simulation mainframe.`,
-      badgeStyle: "bg-neonCyan/20 border-neonCyan/50 text-neonCyan shadow-[0_0_15px_rgba(34,211,238,0.3)]",
-      titleStyle: "from-neonCyan to-neonViolet text-transparent bg-clip-text drop-shadow-[0_0_12px_rgba(34,211,238,0.4)]",
+      badgeStyle: "bg-amber-500/15 border-amber-500/50 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.35)]",
+      titleStyle: "from-amber-400 to-neonCyan text-transparent bg-clip-text drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]",
     },
     boss_defeat: {
       badge: "⚠️ SO CLOSE // FAIL AT ARCHITECT ⚠️",
       title: "SO CLOSE...",
       desc: `You reached the final Boss round of ${categoryName}, but the core security protocols overwhelmed your shields. Initialize a new session to claim ultimate victory!`,
-      badgeStyle: "bg-neonViolet/20 border-neonViolet text-neonViolet shadow-[0_0_20px_rgba(168,85,247,0.4)]",
-      titleStyle: "from-neonViolet to-textMuted text-transparent bg-clip-text drop-shadow-[0_0_12px_rgba(168,85,247,0.4)]",
+      badgeStyle: "bg-red-500/20 border-red-500 text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]",
+      titleStyle: "from-red-500 to-textMuted text-transparent bg-clip-text drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]",
     },
     defeat: {
       badge: "🛡️ DEFEAT REGISTERED 🛡️",
       title: "SIMULATION FAILED",
       desc: `Your session was terminated. You were overcome by the high-difficulty security measures of ${categoryName}. Prepare yourself and try again.`,
-      badgeStyle: "bg-neonViolet/10 border-neonViolet/30 text-neonViolet shadow-[0_0_15px_rgba(168,85,247,0.2)]",
-      titleStyle: "from-neonViolet to-textMuted text-transparent bg-clip-text drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]",
+      badgeStyle: "bg-red-500/10 border-red-500/30 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]",
+      titleStyle: "from-red-500 to-textMuted text-transparent bg-clip-text drop-shadow-[0_0_10px_rgba(239,68,68,0.3)]",
     },
   };
 
@@ -525,8 +584,10 @@ Link: ${shareUrl}`;
   }, [activeResult]);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none relative animate-page-fade">
-      {/* Dynamic Celebratory Background Rings */}
+    <div className={`flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none relative transition-all duration-300 ${
+      isBossVictory ? "animate-victory-scale-in" : isPoolCleared ? "animate-pool-scale-in" : "animate-defeat-glitch-in"
+    }`}>
+      {/* Dynamic Celebratory / Glitch Background styles */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes spin-slow {
           0% { transform: rotate(0deg); }
@@ -536,34 +597,113 @@ Link: ${shareUrl}`;
           0%, 100% { opacity: 0.3; transform: scale(1); }
           50% { opacity: 0.7; transform: scale(1.15); }
         }
+        @keyframes victory-scale-in {
+          0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+          70% { transform: scale(1.02); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes pool-scale-in {
+          0% { opacity: 0; transform: translateY(15px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes defeat-glitch-in {
+          0% { opacity: 0; transform: scale(1.05); filter: hue-rotate(45deg); }
+          10% { opacity: 0.8; filter: grayscale(0.5); }
+          20% { opacity: 0.3; transform: scale(0.98); }
+          30% { opacity: 1; transform: scale(1); filter: none; }
+          100% { opacity: 1; }
+        }
+        @keyframes scanline-anim {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100%); }
+        }
+        @keyframes noise-flicker {
+          0%, 100% { opacity: 0.08; }
+          50% { opacity: 0.15; }
+        }
+        @keyframes achievement-unlock {
+          0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        @keyframes badge-spin {
+          0% { transform: rotate(-45deg) scale(0.6); }
+          100% { transform: rotate(0) scale(1); }
+        }
+        .animate-achievement-unlock {
+          animation: achievement-unlock 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .animate-badge-spin {
+          animation: badge-spin 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .victory-glow-wash {
+          background: radial-gradient(circle, rgba(34,211,238,0.15) 0%, rgba(168,85,247,0.08) 50%, rgba(10,11,16,0) 100%);
+        }
+        .pool-amber-wash {
+          background: radial-gradient(circle, rgba(245,158,11,0.12) 0%, rgba(34,211,238,0.05) 60%, rgba(10,11,16,0) 100%);
+        }
+        .defeat-red-wash {
+          background: radial-gradient(circle, rgba(239,68,68,0.12) 0%, rgba(10,11,16,0) 100%);
+        }
       `}} />
 
-      {isVictory && (
+      {/* Background Visual Enhancements */}
+      {isBossVictory && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden -z-10 flex items-center justify-center">
-          <div className="w-[500px] h-[500px] rounded-full bg-gradient-to-r from-neonViolet/10 to-neonCyan/10 blur-3xl animate-[pulse-glow_4s_infinite_alternate]"></div>
-          <div className="absolute w-[300px] h-[300px] rounded-full border border-neonViolet/20 animate-[spin-slow_20s_linear_infinite]"></div>
-          <div className="absolute w-[400px] h-[400px] rounded-full border border-dashed border-neonCyan/15 animate-[spin-slow_30s_linear_infinite_reverse]"></div>
+          <div className="absolute inset-0 victory-glow-wash opacity-80 animate-pulse"></div>
+          <div className="w-[500px] h-[500px] rounded-full bg-gradient-to-r from-neonViolet/15 to-neonCyan/15 blur-3xl animate-[pulse-glow_4s_infinite_alternate]"></div>
+          <div className="absolute w-[300px] h-[300px] rounded-full border border-neonViolet/25 animate-[spin-slow_25s_linear_infinite]"></div>
+          <div className="absolute w-[400px] h-[400px] rounded-full border border-dashed border-neonCyan/20 animate-[spin-slow_35s_linear_infinite_reverse]"></div>
+        </div>
+      )}
+
+      {isPoolCleared && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden -z-10 flex items-center justify-center">
+          <div className="absolute inset-0 pool-amber-wash opacity-60"></div>
+          <div className="w-[450px] h-[450px] rounded-full bg-gradient-to-r from-amber-500/10 to-neonCyan/10 blur-3xl"></div>
+          {/* Calm scanning line simulation */}
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-amber-500/30 animate-[scanline-anim_8s_linear_infinite]"></div>
+        </div>
+      )}
+
+      {isDefeat && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden -z-10 flex items-center justify-center">
+          <div className="absolute inset-0 defeat-red-wash opacity-90"></div>
+          <div className="w-[500px] h-[500px] rounded-full bg-red-600/5 blur-3xl"></div>
+          {/* Glitch noise and scanline overlays */}
+          <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(transparent_50%,rgba(0,0,0,0.8))]"></div>
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-red-500/30 animate-[scanline-anim_4s_linear_infinite]"></div>
+          <div className="absolute inset-0 bg-red-500/[0.02] mix-blend-overlay animate-[noise-flicker_0.15s_infinite]"></div>
         </div>
       )}
 
       {/* Newly Unlocked Achievement Notification (Non-blocking sequential toast) */}
       {currentToast && (
-        <div className="fixed bottom-6 right-6 z-50 border-2 border-neonCyan bg-bgDark shadow-[0_0_15px_rgba(34,211,238,0.25)] px-6 py-4 rounded flex items-center gap-3 animate-page-fade font-display">
-          <div className="text-2xl">{currentToast.icon}</div>
-          <div>
-            <div className="text-xs font-black text-neonCyan uppercase tracking-widest">
-              ACHIEVEMENT UNLOCKED!
+        <div className="fixed bottom-6 right-6 z-50 border-2 border-neonCyan bg-bgDark shadow-[0_0_20px_rgba(34,211,238,0.4)] px-6 py-4 rounded-lg flex items-center gap-4 animate-achievement-unlock font-display overflow-hidden min-w-[280px]">
+          {/* Neon Glow Sweep line */}
+          <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-neonCyan to-neonViolet"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-neonCyan/5 to-transparent pointer-events-none"></div>
+
+          {/* Badge Icon Animating in with spin & glow */}
+          <div className="text-3xl shrink-0 animate-badge-spin filter drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">
+            {currentToast.icon}
+          </div>
+
+          <div className="flex-1">
+            <div className="text-[9px] font-black text-neonCyan uppercase tracking-[0.2em] animate-pulse">
+              🏆 ACHIEVEMENT UNLOCKED!
             </div>
-            <div className="text-[11px] text-textPrimary font-bold mt-0.5">
+            <div className="text-xs text-textPrimary font-bold mt-0.5 uppercase tracking-wide">
               {currentToast.title}
             </div>
-            <div className="text-[9px] text-textMuted mt-0.5">
+            <div className="text-[9px] text-textMuted mt-0.5 leading-normal">
               {currentToast.description}
             </div>
           </div>
+
           <button
             onClick={() => setCurrentToast(null)}
-            className="text-[10px] text-textMuted hover:text-neonCyan ml-4 focus:outline-none cursor-pointer"
+            className="text-[10px] text-textMuted hover:text-neonCyan ml-2 focus:outline-none cursor-pointer transition-colors duration-200"
           >
             ✕
           </button>
@@ -603,21 +743,43 @@ Link: ${shareUrl}`;
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto mb-4">
             {/* Player Stats */}
-            <div className="flex flex-col gap-2 p-3 rounded bg-bgDark border border-neonCyan/20">
+            <div className="flex flex-col gap-2 p-3 rounded bg-bgDark border border-neonCyan/20 text-left">
               <span className="text-[10px] text-textMuted uppercase tracking-widest">YOU (PLAYER)</span>
               <span className="text-2xl font-black text-neonCyan drop-shadow-[0_0_5px_rgba(34,211,238,0.3)]">
                 {activeResult.score.toLocaleString()}
               </span>
               <span className="text-[9px] text-textMuted uppercase tracking-wider">Peak Streak: {activeResult.peakStreak}</span>
+
+              {/* Score Race Bar - Player */}
+              <div className="w-full h-2 bg-black/50 border border-neonCyan/20 rounded-full mt-2 overflow-hidden">
+                <div
+                  style={{
+                    width: `${raceProgress * 100}%`,
+                    transition: "width 1.5s cubic-bezier(0.1, 0.8, 0.2, 1)"
+                  }}
+                  className="h-full bg-gradient-to-r from-neonCyan to-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+                ></div>
+              </div>
             </div>
 
             {/* AI Twin Stats */}
-            <div className="flex flex-col gap-2 p-3 rounded bg-bgDark border border-neonViolet/30">
+            <div className="flex flex-col gap-2 p-3 rounded bg-bgDark border border-neonViolet/30 text-left">
               <span className="text-[10px] text-textMuted uppercase tracking-widest">AI TWIN</span>
               <span className="text-2xl font-black text-neonViolet drop-shadow-[0_0_5px_rgba(168,85,247,0.3)]">
                 {(activeResult.aiScore || 0).toLocaleString()}
               </span>
               <span className="text-[9px] text-textMuted uppercase tracking-wider">Peak Streak: {activeResult.aiStreak || 0}</span>
+
+              {/* Score Race Bar - AI */}
+              <div className="w-full h-2 bg-black/50 border border-neonViolet/20 rounded-full mt-2 overflow-hidden">
+                <div
+                  style={{
+                    width: `${raceProgress * (activeResult.score > 0 ? Math.min(((activeResult.aiScore || 0) / activeResult.score) * 100, 100) : 100)}%`,
+                    transition: "width 1.5s cubic-bezier(0.1, 0.8, 0.2, 1)"
+                  }}
+                  className="h-full bg-gradient-to-r from-neonViolet to-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                ></div>
+              </div>
             </div>
           </div>
 
@@ -642,7 +804,13 @@ Link: ${shareUrl}`;
       {/* Share Card & Score Dashboard Container */}
       <div
         id="share-card"
-        className="w-full p-8 rounded-lg bg-bgDark border-2 border-neonViolet/30 shadow-[0_0_25px_rgba(168,85,247,0.15)] relative overflow-hidden mb-8 animate-card-glow"
+        className={`w-full p-8 rounded-lg bg-bgDark border-2 relative overflow-hidden mb-8 ${
+          isBossVictory
+            ? "border-neonCyan shadow-[0_0_30px_rgba(34,211,238,0.25)] animate-card-glow"
+            : isPoolCleared
+            ? "border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.15)]"
+            : "border-red-500/50 shadow-[0_0_25px_rgba(239,68,68,0.15)] animate-pulse"
+        }`}
       >
         <div className="absolute top-0 right-0 w-32 h-32 bg-neonViolet/5 transform rotate-45 translate-x-12 -translate-y-12 border-b border-l border-neonViolet/10"></div>
         <div className="absolute bottom-2 right-4 text-[10px] font-mono text-neonViolet/25 tracking-widest uppercase font-display">

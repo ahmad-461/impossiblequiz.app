@@ -77,6 +77,33 @@ export default function EscapeRoomResultsPage() {
             setToastQueue((prev) => [...prev, ...newlyUnlocked]);
           }
 
+          // -------------------------------------------------------------
+          // Save lifetime stats to local storage for the Profile Page
+          // -------------------------------------------------------------
+          try {
+            const statsStr = localStorage.getItem("impossible_quiz_player_stats");
+            const stats = statsStr ? JSON.parse(statsStr) : {
+              totalQuizzesPlayed: 0,
+              totalCorrectAnswers: 0,
+              totalQuestionsAnswered: 0,
+              aiTwinWins: 0,
+              aiTwinLosses: 0,
+              aiTwinTies: 0,
+              categoryPlayCounts: {} as Record<string, number>,
+            };
+
+            // Register escape room played as general counts
+            stats.totalQuizzesPlayed += 1;
+            stats.totalCorrectAnswers += (parsed.roomsClearedCount || 0);
+            stats.totalQuestionsAnswered += 8; // Escape room always has exactly 8 rooms
+
+            stats.categoryPlayCounts["code_escape_room"] = (stats.categoryPlayCounts["code_escape_room"] || 0) + 1;
+
+            localStorage.setItem("impossible_quiz_player_stats", JSON.stringify(stats));
+          } catch (err) {
+            console.error("Failed to update escape room stats in localStorage:", err);
+          }
+
           // Save evaluation flag
           const updated = { ...parsed, evaluated: true };
           sessionStorage.setItem("escape_room_result", JSON.stringify(updated));
@@ -126,28 +153,52 @@ export default function EscapeRoomResultsPage() {
         .screenglow {
           box-shadow: inset 0 0 40px rgba(168, 85, 247, 0.05);
         }
+        @keyframes achievement-unlock {
+          0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        @keyframes badge-spin {
+          0% { transform: rotate(-45deg) scale(0.6); }
+          100% { transform: rotate(0) scale(1); }
+        }
+        .animate-achievement-unlock {
+          animation: achievement-unlock 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .animate-badge-spin {
+          animation: badge-spin 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
       `}} />
 
       <div className="absolute inset-0 atmospheric-escape-results pointer-events-none -z-10"></div>
 
       {/* Newly Unlocked Achievement Notification (Non-blocking sequential toast) */}
       {currentToast && (
-        <div className="fixed bottom-6 right-6 z-50 border-2 border-neonCyan bg-bgDark shadow-[0_0_15px_rgba(34,211,238,0.25)] px-6 py-4 rounded flex items-center gap-3 animate-page-fade font-display">
-          <div className="text-2xl">{currentToast.icon}</div>
-          <div>
-            <div className="text-xs font-black text-neonCyan uppercase tracking-widest">
-              ACHIEVEMENT UNLOCKED!
+        <div className="fixed bottom-6 right-6 z-50 border-2 border-neonCyan bg-bgDark shadow-[0_0_20px_rgba(34,211,238,0.4)] px-6 py-4 rounded-lg flex items-center gap-4 animate-achievement-unlock font-display overflow-hidden min-w-[280px]">
+          {/* Neon Glow Sweep line */}
+          <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-neonCyan to-neonViolet"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-neonCyan/5 to-transparent pointer-events-none"></div>
+
+          {/* Badge Icon Animating in with spin & glow */}
+          <div className="text-3xl shrink-0 animate-badge-spin filter drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">
+            {currentToast.icon}
+          </div>
+
+          <div className="flex-1">
+            <div className="text-[9px] font-black text-neonCyan uppercase tracking-[0.2em] animate-pulse">
+              🏆 ACHIEVEMENT UNLOCKED!
             </div>
-            <div className="text-[11px] text-textPrimary font-bold mt-0.5">
+            <div className="text-xs text-textPrimary font-bold mt-0.5 uppercase tracking-wide">
               {currentToast.title}
             </div>
-            <div className="text-[9px] text-textMuted mt-0.5">
+            <div className="text-[9px] text-textMuted mt-0.5 leading-normal">
               {currentToast.description}
             </div>
           </div>
+
           <button
             onClick={() => setCurrentToast(null)}
-            className="text-[10px] text-textMuted hover:text-neonCyan ml-4 focus:outline-none cursor-pointer"
+            className="text-[10px] text-textMuted hover:text-neonCyan ml-2 focus:outline-none cursor-pointer transition-colors duration-200"
           >
             ✕
           </button>

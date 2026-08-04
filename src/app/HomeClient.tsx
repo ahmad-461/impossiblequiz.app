@@ -289,6 +289,19 @@ export default function Home() {
         .trick-card-pulse {
           animation: trick-card-pulse 3s infinite ease-in-out;
         }
+        @keyframes secret-pulse {
+          0%, 100% {
+            border-color: rgba(168, 85, 247, 0.25);
+            box-shadow: 0 0 6px rgba(168, 85, 247, 0.1);
+          }
+          50% {
+            border-color: rgba(168, 85, 247, 0.65);
+            box-shadow: 0 0 14px rgba(168, 85, 247, 0.3);
+          }
+        }
+        .animate-secret-pulse {
+          animation: secret-pulse 2.5s infinite ease-in-out;
+        }
       `}} />
 
       <div className="absolute inset-0 atmospheric-bg pointer-events-none -z-10"></div>
@@ -352,9 +365,13 @@ export default function Home() {
               {/* Trick Glitch Button */}
               <button
                 onClick={triggerGlitch}
-                className="inline-flex items-center justify-center px-8 py-4 text-sm font-black font-display tracking-widest uppercase transition-all duration-300 rounded border border-neonViolet/25 hover:border-neonViolet bg-bgDark hover:bg-neonViolet/5 text-neonViolet focus:outline-none focus:ring-2 focus:ring-neonViolet text-center cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)] hover:shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+                className="group relative inline-flex flex-col items-center justify-center px-8 py-4 text-xs font-black font-display tracking-widest uppercase transition-all duration-300 ease-in-out rounded border border-dashed border-neonViolet/30 hover:border-neonViolet bg-bgDark hover:bg-neonViolet/10 text-neonViolet focus:outline-none focus:ring-2 focus:ring-neonViolet text-center cursor-pointer animate-secret-pulse min-w-[120px]"
               >
-                ???
+                {/* Tiny badge label positioned near/on the button */}
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-bgDark px-1.5 py-0.5 text-[8px] font-mono font-bold tracking-wider text-neonViolet/60 group-hover:text-neonViolet border border-dashed border-neonViolet/30 group-hover:border-neonViolet/50 rounded whitespace-nowrap uppercase transition-colors duration-300 ease-in-out">
+                  [UNKNOWN_SECTOR]
+                </span>
+                <span className="mt-0.5">???</span>
               </button>
             </ScrollReveal>
 

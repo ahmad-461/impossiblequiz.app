@@ -128,8 +128,8 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-8">
+          {/* Consolidated Desktop and Tablet Navigation Links */}
+          <nav className="hidden md:flex items-center gap-5 lg:gap-8">
             {navLinks.map((link) => {
               const isActive = link.href === "/"
                 ? pathname === "/"
@@ -138,43 +138,21 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`font-mono text-sm tracking-widest font-bold transition-all duration-300 ease-in-out relative py-1 focus:outline-none terminal-cmd group ${
+                  className={`font-mono text-xs lg:text-sm tracking-widest font-bold transition-all duration-300 ease-in-out relative py-1 focus:outline-none terminal-cmd group ${
                     isActive
                       ? "text-neonCyan drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]"
                       : "text-textMuted hover:text-textPrimary hover:drop-shadow-[0_0_6px_rgba(245,245,245,0.2)]"
                   }`}
                 >
                   {link.label}
-                  {/* Underline indicator */}
+                  {/* Underline indicator (visible on desktop) */}
                   <span
-                    className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-neonCyan transition-all duration-300 origin-left ${
+                    className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-neonCyan transition-all duration-300 origin-left hidden lg:block ${
                       isActive
                         ? "scale-x-100 opacity-100"
                         : "scale-x-0 group-hover:scale-x-100 opacity-0 group-hover:opacity-70"
                     }`}
                   />
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Fallback for smaller than large layout but greater than mobile */}
-          <nav className="hidden md:flex lg:hidden items-center gap-5">
-            {navLinks.map((link) => {
-              const isActive = link.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`font-mono text-xs tracking-widest font-bold transition-all duration-300 ease-in-out relative py-1 focus:outline-none terminal-cmd group ${
-                    isActive
-                      ? "text-neonCyan drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]"
-                      : "text-textMuted hover:text-textPrimary"
-                  }`}
-                >
-                  {link.label}
                 </Link>
               );
             })}
@@ -230,29 +208,31 @@ export default function Header() {
               : "max-h-0 opacity-0 pointer-events-none border-transparent"
           }`}
         >
-          <div className="flex flex-col gap-3 px-6">
-            <div className="text-[10px] text-neonViolet/60 uppercase tracking-widest mb-1 select-none">
-              {`// SYSTEM COMMANDS`}
+          {menuOpen && (
+            <div className="flex flex-col gap-3 px-6">
+              <div className="text-[10px] text-neonViolet/60 uppercase tracking-widest mb-1 select-none">
+                {`// SYSTEM COMMANDS`}
+              </div>
+              {navLinks.map((link) => {
+                const isActive = link.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`text-sm tracking-wide py-2 border-b border-neonViolet/10 transition-all duration-300 ease-in-out terminal-cmd focus:outline-none ${
+                      isActive
+                        ? "text-neonCyan drop-shadow-[0_0_6px_rgba(34,211,238,0.4)]"
+                        : "text-textMuted hover:text-textPrimary"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
             </div>
-            {navLinks.map((link) => {
-              const isActive = link.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`text-sm tracking-wide py-2 border-b border-neonViolet/10 transition-all duration-300 ease-in-out terminal-cmd focus:outline-none ${
-                    isActive
-                      ? "text-neonCyan drop-shadow-[0_0_6px_rgba(34,211,238,0.4)]"
-                      : "text-textMuted hover:text-textPrimary"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
+          )}
         </div>
       </header>
     </>

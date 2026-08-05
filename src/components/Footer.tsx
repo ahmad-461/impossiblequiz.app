@@ -7,12 +7,14 @@ import { getCumulativeXP } from "../lib/achievements";
 import { isSoundEnabled, setSoundEnabled } from "../lib/sound";
 
 export default function Footer() {
+  const [mounted, setMounted] = useState(false);
   const [uptimeSeconds, setUptimeSeconds] = useState(0);
   const [cumulativeXP, setCumulativeXP] = useState(0);
   const [soundOn, setSoundOn] = useState(false);
 
   // Read cumulative XP and sound state on mount and react to updates
   useEffect(() => {
+    setMounted(true);
     setCumulativeXP(getCumulativeXP());
     setSoundOn(isSoundEnabled());
 
@@ -114,7 +116,7 @@ export default function Footer() {
           <div className="flex items-center gap-2 justify-center">
             <span className="text-neonViolet/60">UPTIME:</span>
             <span className="text-textPrimary font-bold tabular-nums">
-              {formatUptime(uptimeSeconds)}
+              {mounted ? formatUptime(uptimeSeconds) : "00:00:00"}
             </span>
           </div>
 
@@ -122,7 +124,7 @@ export default function Footer() {
           <div className="flex items-center gap-2 justify-center">
             <span className="text-neonViolet/60">XP TOTAL:</span>
             <span className="text-neonCyan font-black animate-pulse">
-              {cumulativeXP.toLocaleString()} XP
+              {mounted ? cumulativeXP.toLocaleString() : "0"} XP
             </span>
           </div>
 
@@ -133,7 +135,7 @@ export default function Footer() {
               onClick={toggleSound}
               className="text-neonCyan font-bold hover:text-textPrimary transition-all duration-300 focus:outline-none"
             >
-              {soundOn ? "[ 🔊 ON ]" : "[ 🔇 OFF ]"}
+              {mounted && soundOn ? "[ 🔊 ON ]" : "[ 🔇 OFF ]"}
             </button>
           </div>
 
@@ -192,7 +194,7 @@ export default function Footer() {
 
           {/* System status log and copyright */}
           <div className="text-[10px] text-textMuted/40 tracking-wider text-center sm:text-right select-none">
-            {`[SYS_LOG] © ${currentYear} // ALL SYSTEMS OPERATIONAL`}
+            {`[SYS_LOG] © ${mounted ? currentYear : "2026"} // ALL SYSTEMS OPERATIONAL`}
           </div>
         </div>
       </div>

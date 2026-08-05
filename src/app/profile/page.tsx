@@ -208,47 +208,67 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4 text-left">
             <div className="w-16 h-16 rounded-lg bg-neonCyan/10 border border-neonCyan/30 flex flex-col items-center justify-center font-display shadow-[0_0_15px_rgba(34,211,238,0.2)]">
               <span className="text-[9px] text-neonCyan font-bold uppercase tracking-widest leading-none mb-1">LVL</span>
-              <span className="text-2xl font-black text-neonCyan leading-none">{level}</span>
+              <span className="text-2xl font-black text-neonCyan leading-none">{cumulativeXP > 0 ? level : "-"}</span>
             </div>
             <div>
               <h3 className="text-base font-bold font-display uppercase tracking-wider text-textPrimary">
                 SYSTEM AGENT
               </h3>
               <p className="text-xs text-textMuted font-mono">
-                XP CLEARANCE: {cumulativeXP.toLocaleString()} / {nextLevelMinXp.toLocaleString()} PTS
+                {cumulativeXP > 0 ? (
+                  `XP CLEARANCE: ${cumulativeXP.toLocaleString()} / ${nextLevelMinXp.toLocaleString()} PTS`
+                ) : (
+                  "Initialize First Infiltration to Decrypt XP"
+                )}
               </p>
             </div>
           </div>
           <div className="w-full sm:w-48 text-right">
             <span className="text-[9px] font-mono tracking-widest text-textMuted block uppercase mb-1">
-              LEVEL PROGRESSION // {levelPercentage}%
+              LEVEL PROGRESSION // {cumulativeXP > 0 ? `${levelPercentage}%` : "INACTIVE"}
             </span>
             <div className="w-full h-2 bg-black/60 border border-neonCyan/20 rounded-full overflow-hidden">
               <div
-                style={{ width: `${levelPercentage}%` }}
+                style={{ width: `${cumulativeXP > 0 ? levelPercentage : 0}%` }}
                 className="h-full bg-gradient-to-r from-neonCyan to-neonViolet"
               ></div>
             </div>
           </div>
         </div>
 
-        {/* Stats Grid Matrix */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center font-mono">
-          <div className="p-4 rounded border border-neonViolet/15 bg-bgDark/40">
+        {/* Stats Grid Matrix with Motivating CTAs for empty values */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center font-mono">
+          <div className="p-4 rounded border border-neonViolet/15 bg-bgDark/40 flex flex-col justify-center min-h-[100px]">
             <span className="text-[9px] tracking-widest text-textMuted block uppercase mb-1">QUIZZES PLAYED</span>
-            <span className="text-xl font-bold text-textPrimary">{stats.totalQuizzesPlayed}</span>
+            {stats.totalQuizzesPlayed > 0 ? (
+              <span className="text-xl font-bold text-textPrimary">{stats.totalQuizzesPlayed}</span>
+            ) : (
+              <span className="text-[10px] text-neonCyan font-bold uppercase leading-relaxed">Grid Simulation Offline // Initiate Session</span>
+            )}
           </div>
-          <div className="p-4 rounded border border-neonViolet/15 bg-bgDark/40">
+          <div className="p-4 rounded border border-neonViolet/15 bg-bgDark/40 flex flex-col justify-center min-h-[100px]">
             <span className="text-[9px] tracking-widest text-textMuted block uppercase mb-1">ANSWERS COMMITTED</span>
-            <span className="text-xl font-bold text-neonCyan">{stats.totalCorrectAnswers} / {stats.totalQuestionsAnswered}</span>
+            {stats.totalQuestionsAnswered > 0 ? (
+              <span className="text-xl font-bold text-neonCyan">{stats.totalCorrectAnswers} / {stats.totalQuestionsAnswered}</span>
+            ) : (
+              <span className="text-[10px] text-neonViolet font-bold uppercase leading-relaxed">Complete Your First Mission to Earn XP</span>
+            )}
           </div>
-          <div className="p-4 rounded border border-neonViolet/15 bg-bgDark/40">
+          <div className="p-4 rounded border border-neonViolet/15 bg-bgDark/40 flex flex-col justify-center min-h-[100px]">
             <span className="text-[9px] tracking-widest text-textMuted block uppercase mb-1">LIFETIME ACCURACY</span>
-            <span className="text-xl font-bold text-neonViolet">{lifetimeAccuracy}%</span>
+            {stats.totalQuestionsAnswered > 0 ? (
+              <span className="text-xl font-bold text-neonViolet">{lifetimeAccuracy}%</span>
+            ) : (
+              <span className="text-[10px] text-textMuted font-bold uppercase leading-relaxed">Awaiting Calibration Telemetry</span>
+            )}
           </div>
-          <div className="p-4 rounded border border-neonViolet/15 bg-bgDark/40">
+          <div className="p-4 rounded border border-neonViolet/15 bg-bgDark/40 flex flex-col justify-center min-h-[100px]">
             <span className="text-[9px] tracking-widest text-textMuted block uppercase mb-1">UNLOCKED BADGES</span>
-            <span className="text-xl font-bold text-neonCyan">{unlockedCount} / {ACHIEVEMENTS.length}</span>
+            {unlockedCount > 0 ? (
+              <span className="text-xl font-bold text-neonCyan">{unlockedCount} / {ACHIEVEMENTS.length}</span>
+            ) : (
+              <span className="text-[10px] text-neonCyan font-bold uppercase leading-relaxed">No Cryptographic Credentials Secured // Clear Challenges</span>
+            )}
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import ScrollReveal from "../components/ScrollReveal";
 import { categories } from "../lib/categories";
 import { staticQuestions } from "../lib/questions";
 import { supabase } from "../../lib/supabase";
+import { getCumulativeXP, getUnlockedAchievements } from "../lib/achievements";
 
 function DodgingButton({ onCatch }: { onCatch: () => void }) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -105,7 +106,7 @@ function DodgingButton({ onCatch }: { onCatch: () => void }) {
         borderColor: "#a855f7",
         color: "#f5f5f5",
       }}
-      className="px-4 py-2 border rounded font-display text-[11px] tracking-widest uppercase hover:bg-neonViolet/20 hover:shadow-[0_0_12px_rgba(168, 85, 247, 0.3)] select-none cursor-pointer"
+      className="px-4 py-2 border rounded font-display text-[11px] tracking-widest uppercase hover:bg-neonViolet/20 hover:shadow-[0_0_12px_rgba(168, 85, 247, 0.3)] select-none cursor-pointer duration-300 ease-in-out"
     >
       Don&apos;t Click This
     </button>
@@ -128,6 +129,14 @@ export default function Home() {
     difficulty: "medium",
   });
   const [contendersCount, setContendersCount] = useState<string>("150+");
+
+  // Returning player states (client-only to prevent SSR hydration mismatch)
+  const [hasReturned, setHasReturned] = useState(false);
+  const [nickname, setNickname] = useState<string | null>(null);
+  const [xp, setXp] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [badgeCount, setBadgeCount] = useState(0);
+  const [quizzesPlayed, setQuizzesPlayed] = useState(0);
 
   // Recent submissions feed state
   interface RecentSubmission {
@@ -184,6 +193,32 @@ export default function Home() {
         correctAnswerIndex: q.correctAnswerIndex,
         difficulty: q.difficulty,
       });
+    }
+
+    // Load user telemetry
+    try {
+      const storedXp = getCumulativeXP();
+      const storedBadgeCount = getUnlockedAchievements().length;
+      const nick = localStorage.getItem("impossible_quiz_nickname");
+      const statsStr = localStorage.getItem("impossible_quiz_player_stats");
+      const stats = statsStr ? JSON.parse(statsStr) : null;
+      const quizzes = stats ? Number(stats.totalQuizzesPlayed || 0) : 0;
+
+      setXp(storedXp);
+      setBadgeCount(storedBadgeCount);
+      setNickname(nick);
+      setQuizzesPlayed(quizzes);
+
+      // Leveling Formula
+      const calcLevel = Math.floor(Math.sqrt(storedXp / 50)) + 1;
+      setLevel(calcLevel);
+
+      // We consider them returned if they have XP or have played at least one quiz
+      if (storedXp > 0 || quizzes > 0 || nick) {
+        setHasReturned(true);
+      }
+    } catch (e) {
+      console.error("Failed to load player stats in homepage:", e);
     }
 
     async function fetchContenders() {
@@ -307,14 +342,65 @@ export default function Home() {
       <div className="absolute inset-0 atmospheric-bg pointer-events-none -z-10"></div>
 
       {/* 1. HERO SECTION & LIVE PREVIEW GRID */}
-      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-20">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-20 mt-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
 
           {/* Hero Left Content */}
           <div className="lg:col-span-7 text-left flex flex-col items-start">
             {/* Hero Badge */}
-            <ScrollReveal className="mb-6 inline-flex items-center gap-2 bg-neonViolet/10 border border-neonViolet/30 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-bold font-display tracking-widest text-neonViolet uppercase">
+            <ScrollReveal className="mb-4 inline-flex items-center gap-2 bg-neonViolet/10 border border-neonViolet/30 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-bold font-display tracking-widest text-neonViolet uppercase font-mono">
               ⚡ LIVE DEMO CORE // ACCESSIBLE ⚡
+            </ScrollReveal>
+
+            {/* Integrated Player Identity Banner */}
+            <ScrollReveal className="w-full mb-6 font-mono text-xs border border-neonViolet/30 bg-bgDark/60 p-4 rounded relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-2 h-2 bg-neonViolet"></div>
+              {hasReturned ? (
+                <div className="space-y-1">
+                  <div className="text-neonCyan font-bold uppercase tracking-wider text-[11px] sm:text-xs">
+                    &gt; ACTIVE AGENT DETECTED: {nickname ? nickname.toUpperCase() : "GUEST_USER"}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 text-[11px] text-textMuted border-t border-neonViolet/10">
+                    <div>
+                      <span className="block text-[8px] sm:text-[9px] text-neonViolet/70 font-bold uppercase">AGENT RANK</span>
+                      <span className="text-textPrimary font-bold">LEVEL {level}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[8px] sm:text-[9px] text-neonViolet/70 font-bold uppercase">XP SECURED</span>
+                      <span className="text-neonCyan font-black">{xp.toLocaleString()} XP</span>
+                    </div>
+                    <div>
+                      <span className="block text-[8px] sm:text-[9px] text-neonViolet/70 font-bold uppercase">MISSIONS CLEARED</span>
+                      <span className="text-textPrimary font-bold">{quizzesPlayed} RUNS</span>
+                    </div>
+                    <div>
+                      <span className="block text-[8px] sm:text-[9px] text-neonViolet/70 font-bold uppercase">BADGES UNLOCKED</span>
+                      <span className="text-neonCyan font-black">{badgeCount} DECIPHERED</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="text-neonViolet font-bold uppercase tracking-wider text-[11px] sm:text-xs flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-neonViolet animate-ping"></span>
+                    &gt; INITIALIZING NEW RECRUIT INTERFACE... Status: GUEST
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[10px] text-textMuted border-t border-neonViolet/10">
+                    <div>
+                      <span className="block text-[8px] text-neonViolet/50 font-bold uppercase">TRAJECTORY</span>
+                      <span className="text-neonCyan font-bold uppercase leading-relaxed text-[9px] sm:text-[10px]">Complete Your First Mission to Earn XP</span>
+                    </div>
+                    <div>
+                      <span className="block text-[8px] text-neonViolet/50 font-bold uppercase">SIMULATOR LINK</span>
+                      <span className="text-textPrimary font-bold uppercase leading-relaxed text-[9px] sm:text-[10px]">Grid Simulation Offline // Initiate Session</span>
+                    </div>
+                    <div>
+                      <span className="block text-[8px] text-neonViolet/50 font-bold uppercase">CREDENTIALS</span>
+                      <span className="text-neonCyan font-bold uppercase leading-relaxed text-[9px] sm:text-[10px]">No Cryptographic Credentials Secured</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </ScrollReveal>
 
             {/* Main Title */}
@@ -327,6 +413,14 @@ export default function Home() {
               </h1>
             </ScrollReveal>
 
+            {/* MONOSPACE QUALITATIVE WARNING LINE */}
+            <ScrollReveal className="mb-6">
+              <div className="inline-flex items-center gap-2 text-xs font-mono font-bold tracking-wider text-[#ef4444] uppercase bg-[#ef4444]/5 border border-[#ef4444]/20 px-3.5 py-1.5 rounded">
+                <span className="w-2 h-2 rounded-full bg-[#ef4444] animate-pulse"></span>
+                <span>{"// STAKES: MOST CANDIDATES FAIL TO SURVIVE PAST HARD DIFFICULTY..."}</span>
+              </div>
+            </ScrollReveal>
+
             {/* Subtext */}
             <ScrollReveal className="mb-8">
               <p className="text-textMuted max-w-xl text-sm md:text-base leading-relaxed">
@@ -334,49 +428,8 @@ export default function Home() {
               </p>
             </ScrollReveal>
 
-            {/* CTA Buttons */}
-            <ScrollReveal className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
-              {/* Primary CTA with intense glow response */}
-              <Link
-                href="/categories"
-                className="group relative inline-flex items-center justify-center px-8 py-4 text-sm font-black font-display tracking-widest uppercase transition-all duration-300 rounded bg-neonViolet text-textPrimary hover:bg-neonViolet/90 focus:outline-none focus:ring-2 focus:ring-neonCyan shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_25px_rgba(34,211,238,0.7)] border border-transparent hover:border-neonCyan overflow-hidden text-center"
-              >
-                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-neonViolet to-neonCyan opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-sm"></span>
-                START THE QUIZ
-              </Link>
-
-              {/* Escape Room Hardcore CTA */}
-              <Link
-                href="/escape-room"
-                style={{ borderColor: "rgba(239, 68, 68, 0.45)", color: "#ef4444" }}
-                className="inline-flex items-center justify-center px-8 py-4 text-sm font-black font-display tracking-widest uppercase transition-all duration-300 rounded border hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500 text-center shadow-[0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]"
-              >
-                ESCAPE ROOM 🔒
-              </Link>
-
-              {/* Secondary lower-emphasis link */}
-              <Link
-                href="/leaderboard"
-                className="inline-flex items-center justify-center px-8 py-4 text-sm font-black font-display tracking-widest uppercase transition-all duration-300 rounded border border-neonCyan/25 hover:border-neonCyan bg-bgDark hover:bg-neonCyan/5 text-neonCyan focus:outline-none focus:ring-2 focus:ring-neonCyan text-center"
-              >
-                VIEW LEADERBOARD
-              </Link>
-
-              {/* Trick Glitch Button */}
-              <button
-                onClick={triggerGlitch}
-                className="group relative inline-flex flex-col items-center justify-center px-8 py-4 text-xs font-black font-display tracking-widest uppercase transition-all duration-300 ease-in-out rounded border border-dashed border-neonViolet/30 hover:border-neonViolet bg-bgDark hover:bg-neonViolet/10 text-neonViolet focus:outline-none focus:ring-2 focus:ring-neonViolet text-center cursor-pointer animate-secret-pulse min-w-[120px]"
-              >
-                {/* Tiny badge label positioned near/on the button */}
-                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-bgDark px-1.5 py-0.5 text-[8px] font-mono font-bold tracking-wider text-neonViolet/60 group-hover:text-neonViolet border border-dashed border-neonViolet/30 group-hover:border-neonViolet/50 rounded whitespace-nowrap uppercase transition-colors duration-300 ease-in-out">
-                  [UNKNOWN_SECTOR]
-                </span>
-                <span className="mt-0.5">???</span>
-              </button>
-            </ScrollReveal>
-
             {/* Futuristic status items */}
-            <ScrollReveal className="mt-12 grid grid-cols-3 gap-8 max-w-lg border-t border-neonViolet/10 pt-8 w-full">
+            <ScrollReveal className="grid grid-cols-3 gap-8 max-w-lg border-t border-neonViolet/10 pt-8 w-full">
               <div>
                 <div className="text-xl md:text-2xl font-black text-neonCyan font-display">
                   {String(categories.length).padStart(2, "0")}
@@ -387,11 +440,11 @@ export default function Home() {
                 <div className="text-xl md:text-2xl font-black text-neonViolet font-display">
                   {contendersCount}
                 </div>
-                <div className="text-[9px] uppercase tracking-widest text-textMuted mt-1 font-semibold">Leaderboard Contenders</div>
+                <div className="text-[9px] uppercase tracking-widest text-textMuted mt-1 font-semibold font-mono">Leaderboard Contenders</div>
               </div>
               <div>
                 <div className="text-xl md:text-2xl font-black text-neonCyan font-display">LIVE</div>
-                <div className="text-[9px] uppercase tracking-widest text-textMuted mt-1 font-semibold">Leaderboards</div>
+                <div className="text-[9px] uppercase tracking-widest text-textMuted mt-1 font-semibold font-mono">Leaderboards</div>
               </div>
             </ScrollReveal>
           </div>
@@ -455,19 +508,19 @@ export default function Home() {
                         onClick={() => handleOptionSelect(idx)}
                         disabled={selectedIdx !== null}
                         style={borderStyle}
-                        className={`w-full flex items-center p-3 rounded border text-left transition-all duration-200 focus:outline-none ${
+                        className={`w-full flex items-center p-3 rounded border text-left transition-all duration-300 ease-in-out ${
                           selectedIdx === null ? "hover:border-neonCyan hover:bg-neonCyan/5 cursor-pointer" : "cursor-default"
                         }`}
                       >
                         <span
                           style={letterStyle}
-                          className="w-7 h-7 rounded flex items-center justify-center font-display font-bold mr-3 transition-all duration-200 border text-xs"
+                          className="w-7 h-7 rounded flex items-center justify-center font-display font-bold mr-3 transition-all duration-300 ease-in-out border text-xs"
                         >
                           {letters[idx]}
                         </span>
                         <span
                           style={textStyle}
-                          className="text-xs font-semibold transition-colors duration-200 flex-1"
+                          className="text-xs font-semibold transition-colors duration-300 ease-in-out flex-1"
                         >
                           {option}
                         </span>
@@ -494,6 +547,131 @@ export default function Home() {
           </div>
 
         </div>
+      </div>
+
+      {/* 2. MODE SELECTION GRID ("SELECT INFILTRATION VECTOR") */}
+      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-16 border-t border-neonViolet/15">
+        <ScrollReveal>
+          <div className="text-center mb-12">
+            <div className="mb-3 inline-flex items-center gap-2 bg-neonCyan/10 border border-neonCyan/30 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-bold font-display tracking-widest text-neonCyan uppercase font-mono">
+              SYSTEM_MODES // INFILTRATION_VECTORS
+            </div>
+            <h2 className="text-2xl md:text-4xl font-black font-display text-textPrimary uppercase tracking-tight">
+              SELECT YOUR INFILTRATION VECTOR
+            </h2>
+            <p className="text-textMuted max-w-xl mx-auto text-xs sm:text-sm mt-3 font-mono leading-relaxed">
+              Choose your portal parameter. Each simulation pathway demands extreme computational focus.
+            </p>
+          </div>
+        </ScrollReveal>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Card 1: Adaptive Quiz */}
+          <ScrollReveal className="h-full">
+            <Link
+              href="/categories?aiTwin=false"
+              className="group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border-2 border-neonViolet/20 hover:border-neonCyan transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:-translate-y-1 overflow-hidden h-full text-left"
+            >
+              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300 ease-in-out"></div>
+              <div>
+                <div className="text-2xl mb-4">🧠</div>
+                <h3 className="text-lg font-bold font-display text-textPrimary group-hover:text-neonCyan transition-colors duration-300 uppercase">
+                  Adaptive Quiz
+                </h3>
+                <p className="text-xs text-textMuted leading-relaxed mt-2">
+                  Battle climbing difficulty levels powered by our dynamic adaptive engine. Unlock Boss Rounds and test your survival limits.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-neonViolet/10 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-neonViolet/60">SECTOR // CORE</span>
+                <span className="text-neonCyan group-hover:text-neonViolet transition-colors duration-300 font-bold uppercase">ENTER CHANNELS →</span>
+              </div>
+            </Link>
+          </ScrollReveal>
+
+          {/* Card 2: AI Twin Trial */}
+          <ScrollReveal className="h-full">
+            <Link
+              href="/categories?aiTwin=true"
+              className="group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border-2 border-neonViolet/20 hover:border-neonCyan transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:-translate-y-1 overflow-hidden h-full text-left"
+            >
+              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300 ease-in-out"></div>
+              <div>
+                <div className="text-2xl mb-4">🤖</div>
+                <h3 className="text-lg font-bold font-display text-textPrimary group-hover:text-neonCyan transition-colors duration-300 uppercase flex items-center gap-2">
+                  AI Twin Trial
+                  <span className="w-1.5 h-1.5 rounded-full bg-neonCyan animate-ping"></span>
+                </h3>
+                <p className="text-xs text-textMuted leading-relaxed mt-2">
+                  Pre-enable high-fidelity combat against a parallel neural twin. Answer the exact same stream in real time head-to-head.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-neonViolet/10 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-neonViolet/60">SECTOR // PARALLEL</span>
+                <span className="text-neonCyan group-hover:text-neonViolet transition-colors duration-300 font-bold uppercase">LAUNCH TRIAL →</span>
+              </div>
+            </Link>
+          </ScrollReveal>
+
+          {/* Card 3: Escape Room */}
+          <ScrollReveal className="h-full">
+            <Link
+              href="/escape-room"
+              className="group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border-2 border-red-500/20 hover:border-red-500 transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(239,68,68,0.03)] hover:shadow-[0_0_20px_rgba(239,68,68,0.25)] hover:-translate-y-1 overflow-hidden h-full text-left"
+            >
+              <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+              <div>
+                <div className="text-2xl mb-4">🔒</div>
+                <h3 className="text-lg font-bold font-display text-textPrimary group-hover:text-red-500 transition-colors duration-300 uppercase">
+                  Escape Room
+                </h3>
+                <p className="text-xs text-textMuted leading-relaxed mt-2">
+                  Narrative linear system. Clear exactly 8 firewalled puzzle chambers under a 5-minute clock. Max 3 failures allowed.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-red-500/10 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-red-500/60 font-bold">HARDCORE // SEC</span>
+                <span className="text-red-400 group-hover:text-red-300 transition-colors duration-300 font-bold uppercase">INITIATE OVERRIDE →</span>
+              </div>
+            </Link>
+          </ScrollReveal>
+
+          {/* Card 4: Global Standings / Leaderboard */}
+          <ScrollReveal className="h-full">
+            <Link
+              href="/leaderboard"
+              className="group relative flex flex-col justify-between p-6 rounded-lg bg-bgDark border-2 border-neonViolet/20 hover:border-neonCyan transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:-translate-y-1 overflow-hidden h-full text-left"
+            >
+              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300 ease-in-out"></div>
+              <div>
+                <div className="text-2xl mb-4">🏆</div>
+                <h3 className="text-lg font-bold font-display text-textPrimary group-hover:text-neonCyan transition-colors duration-300 uppercase">
+                  Leaderboard
+                </h3>
+                <p className="text-xs text-textMuted leading-relaxed mt-2">
+                  Analyze records permanently logged in our virtual mainframe. Match standing levels and view active submissions feed.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-neonViolet/10 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-neonViolet/60">SECTOR // ARCHIVE</span>
+                <span className="text-neonCyan group-hover:text-neonViolet transition-colors duration-300 font-bold uppercase">VIEW ARCHIVES →</span>
+              </div>
+            </Link>
+          </ScrollReveal>
+        </div>
+
+        {/* Trick Glitch Button aligned below the vectors */}
+        <ScrollReveal className="mt-8 flex justify-center">
+          <button
+            onClick={triggerGlitch}
+            className="group relative inline-flex flex-col items-center justify-center px-12 py-4 text-xs font-black font-display tracking-widest uppercase transition-all duration-300 ease-in-out rounded border border-dashed border-neonViolet/30 hover:border-neonViolet bg-bgDark hover:bg-neonViolet/10 text-neonViolet focus:outline-none focus:ring-2 focus:ring-neonViolet text-center cursor-pointer animate-secret-pulse min-w-[140px]"
+          >
+            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-bgDark px-1.5 py-0.5 text-[8px] font-mono font-bold tracking-wider text-neonViolet/60 group-hover:text-neonViolet border border-dashed border-neonViolet/30 group-hover:border-neonViolet/50 rounded whitespace-nowrap uppercase transition-colors duration-300 ease-in-out">
+              [UNKNOWN_SECTOR]
+            </span>
+            <span className="mt-0.5">???</span>
+          </button>
+        </ScrollReveal>
       </div>
 
       {/* 2. REAL-TIME ACTIVITY DISCOGNITIVES & HOW IT WORKS */}
@@ -529,7 +707,7 @@ export default function Home() {
 
         {/* 2. HOW IT WORKS / SYSTEM ARCHITECTURE */}
         <ScrollReveal>
-          <h2 className="text-xs font-black font-display tracking-widest text-neonCyan uppercase mb-12 text-center">
+          <h2 className="text-xs font-black font-display tracking-widest text-neonCyan uppercase mb-12 text-center font-mono">
             SYSTEM_ARCHITECTURE // MAIN_FEATURES
           </h2>
         </ScrollReveal>
@@ -538,8 +716,8 @@ export default function Home() {
           {/* Feature 1 */}
           <ScrollReveal>
             <div className="p-6 rounded-lg bg-bgDark border border-neonViolet/20 shadow-[0_0_12px_rgba(168,85,247,0.01)] hover:border-neonCyan hover:shadow-[0_0_18px_rgba(34,211,238,0.1)] transition-all duration-300 relative group h-full">
-              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
-              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-3">
+              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300 ease-in-out"></div>
+              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-3 font-mono">
                 01 // DYNAMIC GENERATION
               </div>
               <h3 className="text-base font-bold font-display text-textPrimary uppercase mb-2">Real-Time Synthesis</h3>
@@ -552,8 +730,8 @@ export default function Home() {
           {/* Feature 2 */}
           <ScrollReveal>
             <div className="p-6 rounded-lg bg-bgDark border border-neonViolet/20 shadow-[0_0_12px_rgba(168,85,247,0.01)] hover:border-neonCyan hover:shadow-[0_0_18px_rgba(34,211,238,0.1)] transition-all duration-300 relative group h-full">
-              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
-              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-3">
+              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300 ease-in-out"></div>
+              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-3 font-mono">
                 02 // ADAPTIVE ENGINE
               </div>
               <h3 className="text-base font-bold font-display text-textPrimary uppercase mb-2">Dynamic Difficulty</h3>
@@ -566,8 +744,8 @@ export default function Home() {
           {/* Feature 3 */}
           <ScrollReveal>
             <div className="p-6 rounded-lg bg-bgDark border border-neonViolet/20 shadow-[0_0_12px_rgba(168,85,247,0.01)] hover:border-neonCyan hover:shadow-[0_0_18px_rgba(34,211,238,0.1)] transition-all duration-300 relative group h-full">
-              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300"></div>
-              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-3">
+              <div className="absolute top-0 left-0 w-1 h-full bg-neonViolet group-hover:bg-neonCyan transition-colors duration-300 ease-in-out"></div>
+              <div className="text-[10px] font-display font-black text-neonCyan uppercase tracking-widest mb-3 font-mono">
                 03 // CORE BOSS ROUND
               </div>
               <h3 className="text-base font-bold font-display text-textPrimary uppercase mb-2">Hall of Champions</h3>
@@ -579,76 +757,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 2.5 FEATURED HARDCORE ESCAPE ROOM BANNER */}
-      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 border-t border-neonViolet/15">
-        <ScrollReveal>
-          <div
-            style={{ borderColor: "rgba(239, 68, 68, 0.25)" }}
-            className="w-full p-8 rounded-lg bg-bgDark border-2 hover:border-red-500 transition-all duration-300 relative overflow-hidden shadow-[0_0_25px_rgba(239,68,68,0.05)] text-left flex flex-col md:flex-row items-center justify-between gap-8"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 transform rotate-45 translate-x-12 -translate-y-12 border-b border-l border-red-500/10"></div>
-
-            <div className="flex-1">
-              <span
-                style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
-                className="inline-flex items-center gap-1.5 border px-3 py-1 rounded-full text-[10px] font-bold font-display tracking-widest uppercase mb-4 animate-pulse"
-              >
-                🚨 NEW HARDCORE MODE: ESCAPE ROOM 🚨
-              </span>
-
-              <h2 className="text-2xl md:text-3xl font-black font-display text-textPrimary uppercase mb-3 tracking-tight">
-                CORRUPTED SYSTEM ESCAPE
-              </h2>
-
-              <p className="text-xs md:text-sm text-textMuted max-w-xl leading-relaxed">
-                A narrative-driven, 8-room linear sequence of curated programming challenges. Race against a global 5-minute timer, managing a strict lock override system (max 3 room failures allowed). Can you hack your way out before the system wipes your stack?
-              </p>
-            </div>
-
-            <div className="flex shrink-0 w-full md:w-auto">
-              <Link
-                href="/escape-room"
-                style={{ borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444", backgroundColor: "rgba(239, 68, 68, 0.1)" }}
-                className="group w-full md:w-auto relative inline-flex items-center justify-center px-8 py-4 text-xs font-black font-display tracking-widest uppercase transition-all duration-300 rounded border hover:bg-red-500/20 hover:shadow-[0_0_15px_rgba(239, 68, 68, 0.4)] text-center"
-              >
-                INITIATE ESCAPE MODE →
-              </Link>
-            </div>
-          </div>
-        </ScrollReveal>
-      </div>
-
-      {/* 3. CLOSING CTA SECTION */}
-      <div className="w-full max-w-5xl mx-auto px-6 md:px-12 py-16 mb-12 border-t border-neonViolet/15">
-        <ScrollReveal>
-          <div className="w-full p-8 md:p-12 rounded-lg bg-gradient-to-r from-bgDark to-[#12131e] border border-neonViolet/30 relative overflow-hidden shadow-[0_0_20px_rgba(168,85,247,0.05)] text-center flex flex-col items-center">
-            {/* Ambient subtle glow light */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] rounded-full bg-neonViolet/5 blur-3xl pointer-events-none"></div>
-
-            <h3 className="text-xl md:text-3xl font-black font-display tracking-tight text-textPrimary uppercase mb-4 relative z-10">
-              Ready to test your limits?
-            </h3>
-
-            <p className="text-xs md:text-sm text-textMuted max-w-lg mb-8 relative z-10 leading-relaxed">
-              Step into the simulation mainframe, master high-stakes adaptive difficulty trivia, and secure your place among elite programmers.
-            </p>
-
-            <Link
-              href="/categories"
-              className="group relative inline-flex items-center justify-center px-10 py-4 text-xs font-black font-display tracking-widest uppercase transition-all duration-300 rounded bg-neonViolet text-textPrimary hover:bg-neonViolet/90 focus:outline-none focus:ring-2 focus:ring-neonCyan shadow-[0_0_12px_rgba(168,85,247,0.4)] hover:shadow-[0_0_22px_rgba(34,211,238,0.6)] border border-transparent hover:border-neonCyan relative z-10"
-            >
-              <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-neonViolet to-neonCyan opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-sm"></span>
-              START THE QUIZ
-            </Link>
-          </div>
-        </ScrollReveal>
-      </div>
-
       {/* Decoy Button Container */}
       <div className="w-full max-w-7xl mx-auto px-6 md:px-12 pb-24 flex justify-end relative">
         <div className="border border-dashed border-neonViolet/30 bg-bgDark/60 p-4 rounded-lg relative max-w-[320px] w-full shadow-[0_0_15px_rgba(168,85,247,0.1)] hover:border-neonViolet/60 transition-all duration-300 ease-in-out trick-card-pulse select-none overflow-visible">
           {/* Card Label */}
-          <div className="absolute -top-3 left-4 bg-bgDark px-2 text-[10px] font-display font-bold tracking-widest text-neonViolet border border-neonViolet/30 rounded uppercase select-none">
+          <div className="absolute -top-3 left-4 bg-bgDark px-2 text-[10px] font-display font-bold tracking-widest text-neonViolet border border-neonViolet/30 rounded uppercase select-none font-mono">
             [TRICK_CORE_V1.0]
           </div>
 
@@ -676,10 +789,10 @@ export default function Home() {
         >
           <div className="w-2.5 h-2.5 rounded-full bg-neonCyan animate-ping"></div>
           <div>
-            <div className="text-xs font-black text-neonCyan uppercase tracking-widest">
+            <div className="text-xs font-black text-neonCyan uppercase tracking-widest font-mono">
               SYSTEM BREACH SUCCESSFUL
             </div>
-            <div className="text-[10px] text-textMuted mt-1">
+            <div className="text-[10px] text-textMuted mt-1 font-mono">
               You found the easter egg.
             </div>
           </div>

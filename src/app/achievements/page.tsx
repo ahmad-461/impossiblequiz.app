@@ -56,27 +56,39 @@ export default function AchievementsPage() {
         Verify your personal cryptographic achievements and cumulative XP clearance logs below.
       </p>
 
-      {/* XP & Progress Metrics Bar */}
-      <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 border border-neonViolet/20 bg-bgDark/60 p-6 rounded-lg font-mono text-center mb-10 select-none">
-        <div>
+      {/* XP & Progress Metrics Bar with Motivating CTAs for empty values */}
+      <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 border border-neonViolet/20 bg-bgDark/60 p-6 rounded-lg font-mono text-center mb-10 select-none items-center">
+        <div className="min-h-[80px] flex flex-col justify-center">
           <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">CUMULATIVE XP</span>
-          <span className="text-2xl font-black text-neonCyan drop-shadow-[0_0_6px_rgba(34,211,238,0.3)]">
-            {cumulativeXP.toLocaleString()} XP
-          </span>
+          {cumulativeXP > 0 ? (
+            <span className="text-2xl font-black text-neonCyan drop-shadow-[0_0_6px_rgba(34,211,238,0.3)]">
+              {cumulativeXP.toLocaleString()} XP
+            </span>
+          ) : (
+            <span className="text-[10px] text-neonCyan font-bold uppercase px-2 leading-relaxed">Initialize First Infiltration to Decrypt XP</span>
+          )}
         </div>
 
-        <div>
+        <div className="min-h-[80px] flex flex-col justify-center">
           <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">DECRYPTED BADGES</span>
-          <span className="text-2xl font-black text-neonViolet drop-shadow-[0_0_6px_rgba(168,85,247,0.3)]">
-            {unlockedCount} / {totalAchievements}
-          </span>
+          {unlockedCount > 0 ? (
+            <span className="text-2xl font-black text-neonViolet drop-shadow-[0_0_6px_rgba(168,85,247,0.3)]">
+              {unlockedCount} / {totalAchievements}
+            </span>
+          ) : (
+            <span className="text-[10px] text-neonViolet font-bold uppercase px-2 leading-relaxed">No Cryptographic Credentials Secured // Clear Challenges</span>
+          )}
         </div>
 
-        <div>
+        <div className="min-h-[80px] flex flex-col justify-center">
           <span className="text-[10px] tracking-widest text-textMuted block uppercase mb-1">SYSTEM SYNC RATE</span>
-          <span className="text-2xl font-black text-neonCyan">
-            {completionPercentage}%
-          </span>
+          {unlockedCount > 0 ? (
+            <span className="text-2xl font-black text-neonCyan">
+              {completionPercentage}%
+            </span>
+          ) : (
+            <span className="text-[10px] text-textMuted font-bold uppercase px-2 leading-relaxed">Awaiting Calibration</span>
+          )}
         </div>
       </div>
 

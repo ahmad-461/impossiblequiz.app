@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Question } from "../../lib/questions";
 import SystemLogLoader from "../../components/SystemLogLoader";
 import { sound } from "../../lib/sound";
+import { addXP } from "../../lib/achievements";
 
 const parseCategoryInfo = (id: string) => {
   if (id.startsWith("programming_")) {
@@ -157,6 +158,7 @@ function QuizContent() {
 
   // States
   const [lives, setLives] = useState<number>(3);
+  const [streakBonusMessage, setStreakBonusMessage] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
   const [streak, setStreak] = useState<number>(0);
   const [peakStreak, setPeakStreak] = useState<number>(0);
@@ -846,6 +848,24 @@ function QuizContent() {
       setStreak(nextStreak);
       if (nextStreak > peakStreak) {
         setPeakStreak(nextStreak);
+      }
+
+      // Check for streak milestone rewards (Gamification depth)
+      let milestoneXP = 0;
+      if (nextStreak === 5) {
+        milestoneXP = 50;
+      } else if (nextStreak === 10) {
+        milestoneXP = 100;
+      } else if (nextStreak === 15) {
+        milestoneXP = 200;
+      }
+
+      if (milestoneXP > 0) {
+        addXP(milestoneXP);
+        setStreakBonusMessage(`⚡ [STREAK_BONUS] +${milestoneXP} XP INJECTED // STREAK: x${nextStreak} ⚡`);
+        setTimeout(() => {
+          setStreakBonusMessage(null);
+        }, 3000);
       }
 
       let basePoints = 100;
@@ -1613,9 +1633,58 @@ function QuizContent() {
           </span>
         </div>
 
-        <h2 className="text-lg md:text-2xl font-bold tracking-tight mt-6 mb-8 text-textPrimary leading-snug">
+        <h2 className="text-lg md:text-2xl font-bold tracking-tight mt-6 mb-6 text-textPrimary leading-snug">
           {currentQuestion.questionText}
         </h2>
+
+        {/* Streak Bonus Flashing Text */}
+        {streakBonusMessage && (
+          <div className="mb-6 text-xs font-mono font-black text-neonCyan animate-pulse bg-neonCyan/10 border border-neonCyan/30 p-2.5 rounded text-center tracking-widest uppercase">
+            {streakBonusMessage}
+          </div>
+        )}
+
+        {/* Visual Difficulty Progression Ladder */}
+        <div className="mb-6 font-mono text-[10px] text-textMuted tracking-wider select-none border border-neonViolet/10 bg-bgDark/40 p-2.5 rounded">
+          <div className="flex justify-between items-center text-[9px] uppercase tracking-widest text-textMuted mb-2">
+            <span>Adaptive System Pathway:</span>
+            <span className="text-neonCyan font-bold animate-pulse">LEVEL SYNCHRONIZED</span>
+          </div>
+          <div className="flex items-center justify-between gap-2 select-none">
+            {[
+              { id: "easy", label: "EASY" },
+              { id: "medium", label: "MEDIUM" },
+              { id: "hard", label: "HARD" },
+              { id: "impossible", label: "IMPOSSIBLE" },
+              { id: "boss", label: "BOSS ROUND" }
+            ].map((node, idx) => {
+              const isCurrentBoss = currentQuestion.isBossRound && node.id === "boss";
+              const isCurrentActive = !currentQuestion.isBossRound && currentDifficulty === node.id;
+              const isActive = isCurrentActive || isCurrentBoss;
+
+              const order = ["easy", "medium", "hard", "impossible", "boss"];
+              const currentTierIdx = currentQuestion.isBossRound ? 4 : order.indexOf(currentDifficulty);
+              const isCleared = idx < currentTierIdx;
+
+              return (
+                <div key={node.id} className="flex-1 flex flex-col items-center">
+                  <div className={`w-full h-1.5 rounded-sm transition-all duration-300 ${
+                    isActive
+                      ? "bg-neonCyan shadow-[0_0_8px_rgba(34,211,238,0.6)] scale-y-110"
+                      : isCleared
+                      ? "bg-neonViolet/70"
+                      : "bg-zinc-800"
+                  }`} />
+                  <span className={`mt-1.5 text-[8px] font-bold tracking-widest transition-colors duration-300 uppercase ${
+                    isActive ? "text-neonCyan animate-pulse" : isCleared ? "text-neonViolet" : "text-textMuted/40"
+                  }`}>
+                    {node.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Answer Options */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

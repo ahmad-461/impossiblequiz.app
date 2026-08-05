@@ -595,6 +595,100 @@ Link: ${shareUrl}`;
     return `/quiz?category=${categoryId}&aiTwin=${isAiTwin}`;
   }, [activeResult]);
 
+  // Compute Next Sector URL based on current category progression logic
+  const nextSectorUrl = useMemo(() => {
+    const TOP_CATEGORIES = [
+      "programming",
+      "business",
+      "english",
+      "logic-algorithms",
+      "data-analytics",
+      "computer-science-fundamentals"
+    ];
+
+    const PROGRAMMING_SUB = [
+      "python", "java", "javascript", "c", "cpp", "csharp", "php", "typescript", "go", "rust", "kotlin", "swift"
+    ];
+
+    const BUSINESS_SUB = [
+      "marketing", "finance", "accounting", "entrepreneurship", "management", "economics", "business-strategy"
+    ];
+
+    const ENGLISH_SUB = [
+      "grammar", "vocabulary", "synonyms-antonyms", "tenses", "sentence-correction", "idioms-phrases", "reading-comprehension"
+    ];
+
+    const DIFFICULTIES = ["easy", "medium", "hard", "impossible"];
+
+    const isAiTwin = activeResult.aiTwinEnabled ? "true" : "false";
+    const categoryId = activeResult.category;
+
+    if (categoryId.includes("_")) {
+      const parts = categoryId.split("_");
+      const topCat = parts[0];
+
+      if (topCat === "programming" || topCat === "business" || topCat === "english") {
+        const sub = parts[1];
+        const diff = parts[2] || "easy";
+
+        const diffIdx = DIFFICULTIES.indexOf(diff);
+        if (diffIdx !== -1 && diffIdx < DIFFICULTIES.length - 1) {
+          const nextDiff = DIFFICULTIES[diffIdx + 1];
+          return `/quiz?category=${topCat}_${sub}_${nextDiff}&aiTwin=${isAiTwin}`;
+        } else {
+          let subsList = PROGRAMMING_SUB;
+          if (topCat === "business") subsList = BUSINESS_SUB;
+          if (topCat === "english") subsList = ENGLISH_SUB;
+
+          const subIdx = subsList.indexOf(sub);
+          if (subIdx !== -1 && subIdx < subsList.length - 1) {
+            const nextSub = subsList[subIdx + 1];
+            return `/quiz?category=${topCat}_${nextSub}_easy&aiTwin=${isAiTwin}`;
+          } else {
+            const catIdx = TOP_CATEGORIES.indexOf(topCat);
+            const nextCatIdx = (catIdx + 1) % TOP_CATEGORIES.length;
+            const nextCat = TOP_CATEGORIES[nextCatIdx];
+
+            if (nextCat === "programming") {
+              return `/quiz?category=programming_python_easy&aiTwin=${isAiTwin}`;
+            } else if (nextCat === "business") {
+              return `/quiz?category=business_marketing_easy&aiTwin=${isAiTwin}`;
+            } else if (nextCat === "english") {
+              return `/quiz?category=english_grammar_easy&aiTwin=${isAiTwin}`;
+            } else {
+              return `/quiz?category=${nextCat}_easy&aiTwin=${isAiTwin}`;
+            }
+          }
+        }
+      } else {
+        const topCatFlat = parts[0];
+        const diff = parts[1] || "easy";
+
+        const diffIdx = DIFFICULTIES.indexOf(diff);
+        if (diffIdx !== -1 && diffIdx < DIFFICULTIES.length - 1) {
+          const nextDiff = DIFFICULTIES[diffIdx + 1];
+          return `/quiz?category=${topCatFlat}_${nextDiff}&aiTwin=${isAiTwin}`;
+        } else {
+          const catIdx = TOP_CATEGORIES.indexOf(topCatFlat);
+          const nextCatIdx = (catIdx + 1) % TOP_CATEGORIES.length;
+          const nextCat = TOP_CATEGORIES[nextCatIdx];
+
+          if (nextCat === "programming") {
+            return `/quiz?category=programming_python_easy&aiTwin=${isAiTwin}`;
+          } else if (nextCat === "business") {
+            return `/quiz?category=business_marketing_easy&aiTwin=${isAiTwin}`;
+          } else if (nextCat === "english") {
+            return `/quiz?category=english_grammar_easy&aiTwin=${isAiTwin}`;
+          } else {
+            return `/quiz?category=${nextCat}_easy&aiTwin=${isAiTwin}`;
+          }
+        }
+      }
+    }
+
+    return `/quiz?category=programming_python_easy&aiTwin=${isAiTwin}`;
+  }, [activeResult]);
+
   return (
     <div className={`flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full select-none relative transition-all duration-300 ${
       isBossVictory ? "animate-victory-scale-in" : isPoolCleared ? "animate-pool-scale-in" : "animate-defeat-glitch-in"
@@ -1010,28 +1104,28 @@ Link: ${shareUrl}`;
         )}
       </div>
 
-      {/* Buttons Action Group (Visually Differentiated: Replay vs New Challenge) */}
-      <div className="flex flex-col sm:flex-row items-center gap-6 w-full justify-center font-display">
-        {/* Replay Option: High emphasis neon/solid background for easy replayability */}
+      {/* Buttons Action Group (Visually Differentiated: Play Again, Next Sector, View Leaderboard) */}
+      <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center font-display">
+        {/* Play Again */}
         <Link
           href={replayPath}
-          className="w-full sm:w-auto text-center px-10 py-4 text-base font-black tracking-widest uppercase transition-all duration-300 rounded bg-neonCyan text-bgDark hover:bg-neonCyan/90 hover:shadow-[0_0_20px_rgba(34,211,238,0.6)] focus:outline-none focus:ring-2 focus:ring-neonCyan"
+          className="w-full sm:w-auto text-center px-8 py-3.5 text-sm font-black tracking-widest uppercase transition-all duration-300 rounded bg-neonCyan text-bgDark hover:bg-neonCyan/90 hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] focus:outline-none focus:ring-2 focus:ring-neonCyan"
         >
-          REPLAY INSTANTLY 🔄
+          PLAY AGAIN 🔄
         </Link>
 
-        {/* New Challenge Option: Medium emphasis outline style */}
+        {/* Next Sector */}
         <Link
-          href="/categories"
-          className="w-full sm:w-auto text-center px-10 py-4 text-base font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet"
+          href={nextSectorUrl}
+          className="w-full sm:w-auto text-center px-8 py-3.5 text-sm font-bold tracking-widest uppercase transition-all duration-300 rounded border-2 border-neonViolet text-textPrimary hover:bg-neonViolet/10 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none focus:ring-2 focus:ring-neonViolet"
         >
-          NEW CHALLENGE
+          NEXT SECTOR 🚀
         </Link>
 
         {/* View Leaderboard */}
         <Link
           href="/leaderboard"
-          className="w-full sm:w-auto text-center px-10 py-4 text-base font-medium tracking-widest uppercase transition-all duration-300 rounded border border-textMuted/40 hover:border-textMuted bg-bgDark hover:bg-textMuted/5 text-textMuted hover:text-textPrimary"
+          className="w-full sm:w-auto text-center px-8 py-3.5 text-sm font-medium tracking-widest uppercase transition-all duration-300 rounded border border-textMuted/40 hover:border-textMuted bg-bgDark hover:bg-textMuted/5 text-textMuted hover:text-textPrimary"
         >
           VIEW LEADERBOARD
         </Link>

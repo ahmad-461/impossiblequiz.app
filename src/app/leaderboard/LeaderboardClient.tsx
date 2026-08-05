@@ -377,19 +377,18 @@ function LeaderboardContent() {
               <SystemLogLoader context="leaderboard" />
 
               {/* CSS-based SSR/Hydration timeout fallback */}
-              <div className="ssr-timeout-fallback flex flex-col items-center justify-center text-center px-4 rounded max-w-md mx-auto border border-red-500/30 bg-red-950/20">
-                <span className="text-xs font-mono tracking-widest text-[#ef4444] uppercase font-black animate-pulse mb-2">
-                  ⚠️ CONNECTION TIMEOUT // HYDRATION VECTOR FAILURE
+              <div className="ssr-timeout-fallback flex flex-col items-center justify-center text-center px-4 rounded max-w-md mx-auto border border-neonViolet/30 bg-bgDark/60">
+                <span className="text-xs font-mono tracking-widest text-neonCyan uppercase font-black animate-pulse mb-2">
+                  ⚠️ CONNECTION IS TAKING LONGER THAN EXPECTED
                 </span>
                 <p className="text-[11px] text-textMuted font-mono leading-relaxed max-w-sm">
-                  The client-side connection took too long to synchronize or JS hydration failed.
-                  Please check your internet connection or ensure your browser supports JavaScript.
+                  Establishing secure synchronization. If this screen persists, please check your network connection or reload the page.
                 </p>
                 <button
                   onClick={() => window.location.reload()}
-                  className="mt-4 px-3 py-1.5 border border-red-500/40 hover:border-red-500 bg-red-500/10 text-red-400 rounded text-[10px] font-display tracking-widest uppercase transition-all duration-300 hover:shadow-[0_0_8px_rgba(239,68,68,0.3)] cursor-pointer"
+                  className="mt-4 px-3 py-1.5 border border-neonCyan/40 hover:border-neonCyan bg-neonCyan/10 text-neonCyan rounded text-[10px] font-display tracking-widest uppercase transition-all duration-300 hover:shadow-[0_0_8px_rgba(34,211,238,0.3)] cursor-pointer"
                 >
-                  FORCE SYSTEM REBOOT
+                  RELOAD SYSTEM
                 </button>
               </div>
 
@@ -426,11 +425,11 @@ function LeaderboardContent() {
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-4">
-              <span className="text-sm font-mono tracking-widest text-[#ef4444] uppercase font-bold animate-pulse">
-                ⚠️ ERROR: LEADERBOARD UNAVAILABLE
+              <span className="text-sm font-mono tracking-widest text-neonViolet uppercase font-bold animate-pulse">
+                ⚠️ TELEMETRY SYNC OFFLINE
               </span>
               <p className="text-xs text-textMuted max-w-md font-mono normal-case">
-                Failed to establish database connection. The mainframe records could not be retrieved.
+                Unable to retrieve high scores at this moment. Please verify your connection and try again.
               </p>
               <button
                 onClick={() => loadLeaderboard()}

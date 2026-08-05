@@ -28,6 +28,15 @@ export default function CategoriesPage() {
   const [personalBests, setPersonalBests] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("aiTwin") === "true") {
+        setAiTwin(true);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     try {
       const stored = sessionStorage.getItem("quiz_personal_bests");
       if (stored) {

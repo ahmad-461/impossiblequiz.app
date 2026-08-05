@@ -7,12 +7,14 @@ import { usePathname } from "next/navigation";
 import { isSoundEnabled, setSoundEnabled } from "../lib/sound";
 
 export default function Header() {
+  const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
+    setMounted(true);
     setSoundOn(isSoundEnabled());
 
     const handleSoundToggle = (e: Event) => {
@@ -122,8 +124,14 @@ export default function Header() {
             {/* Terminal Prefix styled brand lockup */}
             <div className="flex items-center font-mono text-xs sm:text-sm md:text-base tracking-wider select-none">
               <span className="text-neonViolet font-bold mr-1">[IQ-OS]</span>
-              <span className="text-neonCyan hidden sm:inline">guest@impossiblequiz:~$</span>
-              <span className="text-neonCyan inline sm:hidden">guest@iq:~$</span>
+              {!mounted ? (
+                <span className="text-neonCyan">guest@impossiblequiz:~$</span>
+              ) : (
+                <>
+                  <span className="text-neonCyan hidden sm:inline">guest@impossiblequiz:~$</span>
+                  <span className="text-neonCyan inline sm:hidden">guest@iq:~$</span>
+                </>
+              )}
               <span className="text-neonCyan ml-1 terminal-blink font-bold">_</span>
             </div>
           </Link>
@@ -173,31 +181,33 @@ export default function Header() {
           </div>
 
           {/* Mobile Terminal-style $ Prompt Button */}
-          <div className="flex md:hidden items-center gap-3">
-            {/* Mobile Sound Toggle */}
-            <button
-              onClick={toggleSound}
-              className={`font-mono text-xs border rounded w-10 h-10 flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out ${
-                soundOn
-                  ? "border-neonCyan bg-neonCyan/10 text-neonCyan shadow-[0_0_8px_rgba(34,211,238,0.2)]"
-                  : "border-neonViolet/20 bg-bgDark/60 text-textMuted"
-              }`}
-              aria-label="Toggle Sound"
-            >
-              <span>{soundOn ? "🔊" : "🔇"}</span>
-            </button>
+          {mounted && (
+            <div className="flex md:hidden items-center gap-3">
+              {/* Mobile Sound Toggle */}
+              <button
+                onClick={toggleSound}
+                className={`font-mono text-xs border rounded w-10 h-10 flex items-center justify-center focus:outline-none transition-all duration-300 ease-in-out ${
+                  soundOn
+                    ? "border-neonCyan bg-neonCyan/10 text-neonCyan shadow-[0_0_8px_rgba(34,211,238,0.2)]"
+                    : "border-neonViolet/20 bg-bgDark/60 text-textMuted"
+                }`}
+                aria-label="Toggle Sound"
+              >
+                <span>{soundOn ? "🔊" : "🔇"}</span>
+              </button>
 
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              type="button"
-              className="flex items-center justify-center w-10 h-10 border border-neonCyan/30 hover:border-neonCyan rounded bg-bgDark/60 text-neonCyan font-mono text-lg font-bold shadow-[0_0_8px_rgba(34,211,238,0.2)] focus:outline-none transition-all duration-300 ease-in-out"
-              aria-label="Toggle Navigation Menu"
-              aria-expanded={menuOpen}
-            >
-              <span>$</span>
-              <span className="terminal-blink font-light text-neonCyan ml-0.5">_</span>
-            </button>
-          </div>
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                type="button"
+                className="flex items-center justify-center w-10 h-10 border border-neonCyan/30 hover:border-neonCyan rounded bg-bgDark/60 text-neonCyan font-mono text-lg font-bold shadow-[0_0_8px_rgba(34,211,238,0.2)] focus:outline-none transition-all duration-300 ease-in-out"
+                aria-label="Toggle Navigation Menu"
+                aria-expanded={menuOpen}
+              >
+                <span>$</span>
+                <span className="terminal-blink font-light text-neonCyan ml-0.5">_</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Mobile Menu Dropdown Slider (Styled as Floating Terminal Box) */}
